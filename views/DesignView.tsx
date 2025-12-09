@@ -79,6 +79,27 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  // Clean up any stray characters that might slip into the canvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const walker = document.createTreeWalker(
+      canvasRef.current,
+      NodeFilter.SHOW_TEXT
+    );
+
+    const strayNodes: Text[] = [];
+
+    while (walker.nextNode()) {
+      const textNode = walker.currentNode as Text;
+      if (textNode.nodeValue?.trim() === ';(') {
+        strayNodes.push(textNode);
+      }
+    }
+
+    strayNodes.forEach(node => node.remove());
+  }, [viewMode, nodes, edges, loading]);
+
   // Initial Generation
   useEffect(() => {
     initArchitecture();
