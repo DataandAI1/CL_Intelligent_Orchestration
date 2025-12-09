@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Context Lattice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        /* Context Lattice Design Guide 2025 - Dark Mode Palette */
+        --bg-primary: #1A1A1A;
+        --bg-secondary: #2A2A2A;
+        --bg-elevated: #333333;
+        
+        --text-primary: #FFFFFF;
+        --text-secondary: #B8B8B8;
+        --text-tertiary: #808080;
+        
+        --color-navy: #2A5F8C; /* Lightened for dark mode visibility */
+        --color-navy-dark: #1A3F5C; /* Brand Primary */
+        --color-gold: #D4B980; /* Lightened for dark mode */
+        --color-gold-hover: #C4A870;
+        --color-charcoal: #4A4A4A;
+        
+        --border-color: #333333;
+        
+        /* Functional Colors */
+        --color-success: #2E7D32;
+        --color-warning: #F57C00;
+        --color-error: #C62828;
+
+        /* Spacing & Radius */
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+      }
+
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Typography overrides */
+      code, pre, .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-primary); 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--bg-elevated); 
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-tertiary); 
+      }
+
+      /* Glassmorphism Utilities */
+      .glass-panel {
+        background: rgba(42, 42, 42, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+      }
+      
+      .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      /* Animations */
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      
+      .animate-float {
+        animation: float 6s ease-in-out infinite;
+      }
+      
+      .text-gradient-gold {
+        background: linear-gradient(135deg, #F5F2ED 0%, #D4B980 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* PRINT STYLES FOR PDF EXPORT */
+      @media print {
+        @page {
+            margin: 0.5cm;
+            size: auto;
+        }
+
+        /* 
+           NUCLEAR OPTION FOR REACT PRINTING 
+           Hide everything by default, then selectively show the project plan container 
+           and reposition it to the top of the flow.
+        */
+        body {
+            visibility: hidden;
+            background-color: #151515 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .project-plan-container {
+            visibility: visible !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            display: block !important;
+            background-color: #151515 !important;
+            margin: 0 !important;
+            padding: 20px !important;
+        }
+
+        .project-plan-container * {
+            visibility: visible !important;
+        }
+
+        /* Hide specific UI elements inside the container that shouldn't print */
+        .no-print, button {
+            display: none !important;
+        }
+
+        /* Reset layout constraints that cause cutting off */
+        .h-full, .h-screen, .min-h-screen, .overflow-y-auto, .overflow-hidden, .custom-scrollbar {
+            height: auto !important;
+            overflow: visible !important;
+            max-height: none !important;
+        }
+
+        /* Page break handling */
+        .break-inside-avoid, .rounded-xl, .border, .bg-\[\#1A1A1A\], h3, h4 {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+        }
+
+        /* Colors for print readability while maintaining dark theme */
+        .text-\[\#808080\] { color: #9CA3AF !important; }
+        .text-\[\#B8B8B8\] { color: #D1D5DB !important; }
+        .border-\[\#333333\] { border-color: #4B5563 !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
