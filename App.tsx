@@ -4,7 +4,9 @@ import { RequirementGathering } from './views/RequirementGathering';
 import { DesignView } from './views/DesignView';
 import { ProjectPlanner } from './views/ProjectPlanner';
 import { StartPage } from './views/StartPage';
+import { SettingsView } from './views/SettingsView';
 import { ProjectRequirements, NodeData, Edge } from './types';
+import { SettingsProvider } from './services/settings/SettingsContext';
 
 // Context Lattice Logo Component
 const Logo = ({ size = "w-10 h-10" }: { size?: string }) => (
@@ -25,7 +27,7 @@ const Logo = ({ size = "w-10 h-10" }: { size?: string }) => (
 );
 
 const App: React.FC = () => {
-  const [step, setStep] = useState<'start' | 'gather' | 'design' | 'plan'>('start');
+  const [step, setStep] = useState<'start' | 'gather' | 'design' | 'plan' | 'settings'>('start');
   
   const [requirements, setRequirements] = useState<ProjectRequirements>({
     goals: [],
@@ -65,6 +67,7 @@ const App: React.FC = () => {
   );
 
   return (
+    <SettingsProvider onOpenSettings={() => setStep('settings')}>
     <div className="min-h-screen bg-[#1A1A1A] text-[#FFFFFF] font-sans selection:bg-[#2A5F8C] selection:text-white">
       {step === 'start' && (
         <StartPage onStart={handleStart} />
@@ -97,6 +100,16 @@ const App: React.FC = () => {
                     <Separator />
                     <NavItem id="plan" num="03" label="PROJECT PLANNER" />
                 </div>
+                <button
+                  onClick={() => setStep('settings')}
+                  aria-label="Settings"
+                  className={`transition-colors hover:text-[#B8B8B8] ${step === 'settings' ? 'text-[#D4B980]' : 'text-[#808080]'}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5">
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
             </nav>
           </header>
 
@@ -120,17 +133,20 @@ const App: React.FC = () => {
             )}
 
             {step === 'plan' && (
-                <ProjectPlanner 
+                <ProjectPlanner
                     requirements={requirements}
                     nodes={nodes}
                     edges={edges}
                     onBack={() => setStep('design')}
                 />
             )}
+
+            {step === 'settings' && <SettingsView />}
           </main>
         </div>
       )}
     </div>
+    </SettingsProvider>
   );
 };
 

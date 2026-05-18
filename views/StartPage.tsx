@@ -1,12 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { ProjectRequirements } from '../types';
-import { analyzeProjectAssets } from '../services/geminiService';
+import { analyzeProjectAssets } from '../services/agentService';
+import { ConfigureBanner } from '../components/ConfigureBanner';
+import { useSettingsContext } from '../services/settings/SettingsContext';
 
 interface Props {
   onStart: (requirements: ProjectRequirements) => void;
 }
 
 export const StartPage: React.FC<Props> = ({ onStart }) => {
+  const { isConfigured } = useSettingsContext();
+  const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
+  const showBanner = !isConfigured && !hasFallbackKey;
+
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [fileContent, setFileContent] = useState<string>('');
@@ -96,6 +102,7 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
 
         {/* Right Column: Interactive Setup Card */}
         <div className="lg:col-span-7">
+          {showBanner && <ConfigureBanner />}
           <div className="glass-panel p-1 rounded-2xl shadow-2xl">
             <div className="bg-[#1A1A1A]/90 backdrop-blur-xl rounded-xl p-8 sm:p-10 border border-[#333333]">
               
@@ -164,9 +171,9 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
                 </div>
 
                 {/* Action Button */}
-                <button 
+                <button
                   onClick={handleStart}
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || showBanner}
                   className="w-full bg-[#2A5F8C] hover:bg-[#1A3F5C] disabled:bg-[#333333] text-white font-bold py-4 rounded-lg shadow-lg shadow-[#2A5F8C]/20 hover:shadow-[#2A5F8C]/40 transform transition-all hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 mt-4"
                 >
                   {isAnalyzing ? (

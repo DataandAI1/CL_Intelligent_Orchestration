@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ProjectRequirements, NodeData, Edge, NodeType, AgentDesignResponse, ArchitectureAnalysis, SimulationStep, PatternComparisonResponse } from '../types';
-import { generateArchitecture, simulateAgentRun, optimizeArchitecture, compareOrchestrationPatterns } from '../services/geminiService';
+import { generateArchitecture, simulateAgentRun, optimizeArchitecture, compareOrchestrationPatterns } from '../services/agentService';
 import { DraggableNode } from '../components/DraggableNode';
 import { ConnectionLine } from '../components/ConnectionLine';
 import { NodeIcon, LatticeIcon, RoadmapIcon, CompareIcon, PlayIcon, TableIcon, GraphIcon, BuildIcon } from '../components/Icons';
+import { ConfigureBanner } from '../components/ConfigureBanner';
+import { useSettingsContext } from '../services/settings/SettingsContext';
 
 interface Props {
   requirements: ProjectRequirements;
@@ -35,6 +37,10 @@ const ORCHESTRATION_PATTERNS = [
 ];
 
 export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) => {
+  const { isConfigured } = useSettingsContext();
+  const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
+  const showBanner = !isConfigured && !hasFallbackKey;
+
   const [nodes, setNodes] = useState<NodeData[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +92,10 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
   }, []);
 
   const initArchitecture = async () => {
+    if (showBanner) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setGenerationError(false);
     const design = await generateArchitecture(requirements);
@@ -452,6 +462,11 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+            {showBanner && (
+              <div className="pt-2">
+                <ConfigureBanner />
+              </div>
+            )}
             {loading ? (
                  <div className="flex flex-col items-center justify-center h-40 space-y-4">
                      <div className="w-8 h-8 border-2 border-[#D4B980] border-t-transparent rounded-full animate-spin"></div>
@@ -565,9 +580,10 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
                             <h3 className="text-xs font-bold text-[#D4B980] uppercase tracking-wider">Lattice Optimizer</h3>
                         </div>
                         <p className="text-xs text-[#B8B8B8] mb-4 leading-relaxed">Analyze the graph for gaps and suggest improvements.</p>
-                        <button 
+                        <button
                             onClick={runOptimization}
-                            className="w-full bg-[#2A5F8C] hover:bg-[#1A3F5C] text-white py-2 px-4 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-[#2A5F8C]/20"
+                            disabled={showBanner}
+                            className="w-full bg-[#2A5F8C] hover:bg-[#1A3F5C] disabled:bg-[#333333] disabled:text-[#808080] text-white py-2 px-4 rounded-lg text-xs font-bold transition-colors shadow-lg shadow-[#2A5F8C]/20"
                         >
                            Run Analysis
                         </button>
@@ -599,9 +615,10 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
                                     </p>
                                 </div>
                                 
-                                <button 
+                                <button
                                     onClick={runComparison}
-                                    className="w-full bg-[#1A1A1A] hover:bg-[#2A2A2A] border border-[#2A5F8C]/30 text-[#2A5F8C] hover:text-[#D4B980] py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                                    disabled={showBanner}
+                                    className="w-full bg-[#1A1A1A] hover:bg-[#2A2A2A] border border-[#2A5F8C]/30 text-[#2A5F8C] hover:text-[#D4B980] py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <CompareIcon className="w-4 h-4"/>
                                     Compare Patterns
@@ -623,17 +640,19 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
              <span>📄</span> Export Lattice Architecture Plan
            </button>
 
-           <button 
+           <button
              onClick={() => setShowSimulator(true)}
-             className="w-full bg-[#D4B980] hover:bg-[#C4A870] text-[#1A1A1A] py-3 px-3 rounded-lg font-bold transition-transform hover:-translate-y-0.5 shadow-lg text-[10px] uppercase tracking-wider flex items-center justify-center gap-2"
+             disabled={showBanner}
+             className="w-full bg-[#D4B980] hover:bg-[#C4A870] disabled:bg-[#333333] disabled:text-[#808080] text-[#1A1A1A] py-3 px-3 rounded-lg font-bold transition-transform hover:-translate-y-0.5 shadow-lg text-[10px] uppercase tracking-wider flex items-center justify-center gap-2"
            >
              <PlayIcon className="w-5 h-5"/>
              <span>Simulate Architecture</span>
            </button>
 
-           <button 
+           <button
              onClick={() => onNext(nodes, edges)}
-             className="w-full bg-[#2A5F8C] hover:bg-[#1A3F5C] text-white py-3 px-4 rounded-lg font-bold transition-colors text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 border border-[#FFFFFF]/10"
+             disabled={showBanner}
+             className="w-full bg-[#2A5F8C] hover:bg-[#1A3F5C] disabled:bg-[#333333] disabled:text-[#808080] text-white py-3 px-4 rounded-lg font-bold transition-colors text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 border border-[#FFFFFF]/10"
            >
              <RoadmapIcon className="w-5 h-5"/>
              <span>Generate Project Plan</span>
@@ -1245,6 +1264,7 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
               </div>
           </div>
       )}
+      </div>
     </div>
   );
 };

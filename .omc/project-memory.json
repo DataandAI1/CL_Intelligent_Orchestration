@@ -1,0 +1,266 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1779131286963,
+  "projectRoot": "c:\\Users\\reyno\\Projects\\CL_Intelligent_Orchestration",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "react",
+        "version": "19.2.0",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.0",
+        "category": "frontend"
+      },
+      {
+        "name": "vite",
+        "version": "6.2.0",
+        "category": "build"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "components"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "components": {
+      "path": "components",
+      "purpose": "UI components",
+      "fileCount": 3,
+      "lastAccessed": 1779131286933,
+      "keyFiles": [
+        "ConnectionLine.tsx",
+        "DraggableNode.tsx",
+        "Icons.tsx"
+      ]
+    },
+    "services": {
+      "path": "services",
+      "purpose": "Business logic services",
+      "fileCount": 1,
+      "lastAccessed": 1779131286933,
+      "keyFiles": [
+        "geminiService.ts"
+      ]
+    },
+    "views": {
+      "path": "views",
+      "purpose": "View templates",
+      "fileCount": 4,
+      "lastAccessed": 1779131286946,
+      "keyFiles": [
+        "DesignView.tsx",
+        "ProjectPlanner.tsx",
+        "RequirementGathering.tsx",
+        "StartPage.tsx"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "services\\geminiService.ts",
+      "accessCount": 22,
+      "lastAccessed": 1779136528505,
+      "type": "file"
+    },
+    {
+      "path": "App.tsx",
+      "accessCount": 17,
+      "lastAccessed": 1779137056734,
+      "type": "file"
+    },
+    {
+      "path": "views\\DesignView.tsx",
+      "accessCount": 11,
+      "lastAccessed": 1779137013084,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 11,
+      "lastAccessed": 1779137064187,
+      "type": "directory"
+    },
+    {
+      "path": "views\\StartPage.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1779136920987,
+      "type": "file"
+    },
+    {
+      "path": "views\\RequirementGathering.tsx",
+      "accessCount": 8,
+      "lastAccessed": 1779136953518,
+      "type": "file"
+    },
+    {
+      "path": "views\\ProjectPlanner.tsx",
+      "accessCount": 7,
+      "lastAccessed": 1779137037785,
+      "type": "file"
+    },
+    {
+      "path": "vite.config.ts",
+      "accessCount": 5,
+      "lastAccessed": 1779132380571,
+      "type": "file"
+    },
+    {
+      "path": "types.ts",
+      "accessCount": 4,
+      "lastAccessed": 1779131948455,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\errors.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779136533866,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\types.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779136787033,
+      "type": "file"
+    },
+    {
+      "path": "index.html",
+      "accessCount": 3,
+      "lastAccessed": 1779136797408,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1779136802229,
+      "type": "file"
+    },
+    {
+      "path": "services\\settings\\SettingsContext.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1779136780216,
+      "type": "file"
+    },
+    {
+      "path": "services\\settings\\useSettings.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779136786287,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\index.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779136786656,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\ollamaProvider.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779136793030,
+      "type": "file"
+    },
+    {
+      "path": "metadata.json",
+      "accessCount": 1,
+      "lastAccessed": 1779131378923,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1779131378943,
+      "type": "file"
+    },
+    {
+      "path": "index.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1779131381034,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\geminiProvider.ts",
+      "accessCount": 1,
+      "lastAccessed": 1779136547414,
+      "type": "file"
+    },
+    {
+      "path": "services\\agentService.ts",
+      "accessCount": 1,
+      "lastAccessed": 1779136644049,
+      "type": "file"
+    },
+    {
+      "path": "components\\Icons.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1779136801905,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1779136802083,
+      "type": "file"
+    },
+    {
+      "path": "components\\ConfigureBanner.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1779136815497,
+      "type": "file"
+    },
+    {
+      "path": "views\\SettingsView.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1779136867639,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

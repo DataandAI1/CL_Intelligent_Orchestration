@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { ProjectRequirements, RequirementCategory, RequirementItem, SuggestionResponse, CompletenessAnalysis } from '../types';
-import { expandRequirements, checkRequirementsCompleteness } from '../services/geminiService';
+import { expandRequirements, checkRequirementsCompleteness } from '../services/agentService';
 import { NodeIcon } from '../components/Icons';
+import { ConfigureBanner } from '../components/ConfigureBanner';
+import { useSettingsContext } from '../services/settings/SettingsContext';
 
 interface Props {
   requirements: ProjectRequirements;
@@ -17,6 +19,10 @@ interface BrainstormState {
 }
 
 export const RequirementGathering: React.FC<Props> = ({ requirements, setRequirements, onNext }) => {
+  const { isConfigured } = useSettingsContext();
+  const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
+  const showBanner = !isConfigured && !hasFallbackKey;
+
   const [inputs, setInputs] = useState<Record<RequirementCategory, string>>({
     goals: '',
     processes: '',
@@ -106,7 +112,8 @@ export const RequirementGathering: React.FC<Props> = ({ requirements, setRequire
 
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-10 pb-32">
-      
+      {showBanner && <ConfigureBanner />}
+
       {/* Header Context */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
           <div>
@@ -120,8 +127,8 @@ export const RequirementGathering: React.FC<Props> = ({ requirements, setRequire
           
           <button
             onClick={handleCheckHealth}
-            disabled={checkingHealth}
-            className="group bg-[#2A2A2A] hover:bg-[#333333] text-[#D4B980] border border-[#D4B980]/30 hover:border-[#D4B980] px-5 py-2.5 rounded-lg transition-all shadow-lg flex items-center gap-3 text-sm font-semibold whitespace-nowrap"
+            disabled={checkingHealth || showBanner}
+            className="group bg-[#2A2A2A] hover:bg-[#333333] text-[#D4B980] border border-[#D4B980]/30 hover:border-[#D4B980] px-5 py-2.5 rounded-lg transition-all shadow-lg flex items-center gap-3 text-sm font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {checkingHealth ? (
                 <>
@@ -157,8 +164,8 @@ export const RequirementGathering: React.FC<Props> = ({ requirements, setRequire
               </h3>
               <button
                 onClick={() => handleExpand(cat.key)}
-                disabled={loadingCategory === cat.key}
-                className="text-xs text-[#2A5F8C] hover:text-[#D4B980] bg-[#2A5F8C]/10 hover:bg-[#2A5F8C]/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5 border border-[#2A5F8C]/20"
+                disabled={loadingCategory === cat.key || showBanner}
+                className="text-xs text-[#2A5F8C] hover:text-[#D4B980] bg-[#2A5F8C]/10 hover:bg-[#2A5F8C]/20 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5 border border-[#2A5F8C]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingCategory === cat.key ? (
                     <span className="animate-spin">⏳</span>

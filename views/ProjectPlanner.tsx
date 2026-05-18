@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { ProjectRequirements, NodeData, Edge, ProjectPlan } from '../types';
-import { generateProjectPlan } from '../services/geminiService';
+import { generateProjectPlan } from '../services/agentService';
 import { PlannerIcon, NodeIcon } from '../components/Icons';
+import { ConfigureBanner } from '../components/ConfigureBanner';
+import { useSettingsContext } from '../services/settings/SettingsContext';
 
 interface Props {
   requirements: ProjectRequirements;
@@ -12,10 +14,15 @@ interface Props {
 }
 
 export const ProjectPlanner: React.FC<Props> = ({ requirements, nodes, edges, onBack }) => {
+  const { isConfigured } = useSettingsContext();
+  const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
+  const showBanner = !isConfigured && !hasFallbackKey;
+
   const [plan, setPlan] = useState<ProjectPlan | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!showBanner);
 
   useEffect(() => {
+    if (showBanner) return;
     const fetchPlan = async () => {
         const result = await generateProjectPlan(requirements, nodes, edges);
         setPlan(result);
@@ -106,9 +113,17 @@ export const ProjectPlanner: React.FC<Props> = ({ requirements, nodes, edges, on
 
   if (!plan) {
       return (
-        <div className="flex h-full w-full items-center justify-center bg-[#151515] flex-col gap-4">
-            <p className="text-[#808080]">Failed to generate plan.</p>
-            <button onClick={onBack} className="text-[#D4B980] hover:underline">Return to Design</button>
+        <div className="flex h-full w-full items-center justify-center bg-[#151515] flex-col gap-4 p-8">
+            {showBanner ? (
+              <div className="w-full max-w-2xl">
+                <ConfigureBanner />
+              </div>
+            ) : (
+              <>
+                <p className="text-[#808080]">Failed to generate plan.</p>
+                <button onClick={onBack} className="text-[#D4B980] hover:underline">Return to Design</button>
+              </>
+            )}
         </div>
       );
   }
