@@ -1,0 +1,163 @@
+{
+  "title": "Docker + Postgres Containerization (Option A: compose-only)",
+  "planRef": ".omc/plans/docker-postgres-containerization.md",
+  "mode": "ralph-prd",
+  "createdAt": "2026-05-18",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create .dockerignore",
+      "priority": 1,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "File exists; grep confirms node_modules, dist, dist-ssr, .git, .gitignore, .env, .env.*, .claude, .omc, .vscode, *.md, *.log entries.",
+      "acceptanceCriteria": [
+        ".dockerignore exists at project root",
+        "Excludes node_modules, dist, dist-ssr, .git, .gitignore, .env, .env.*, .claude, .omc, .vscode, *.md, *.log"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Create nginx.conf with SPA fallback + caching + security headers",
+      "priority": 2,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "File exists; grep confirms listen 80, root /usr/share/nginx/html, try_files SPA fallback, cache expires 1y + immutable, X-Frame-Options + X-Content-Type-Options.",
+      "acceptanceCriteria": [
+        "nginx.conf exists at project root",
+        "server listens on 80 with root /usr/share/nginx/html",
+        "location / has 'try_files $uri $uri/ /index.html' SPA fallback",
+        "Static-asset location block sets 'expires 1y' and 'Cache-Control: public, immutable' for js/css/png/jpg/jpeg/gif/ico/svg/woff/woff2",
+        "Adds X-Frame-Options SAMEORIGIN and X-Content-Type-Options nosniff headers"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Create multi-stage Dockerfile",
+      "priority": 3,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "File exists; grep confirms FROM node:20-alpine AS builder, npm ci, npm run build, ARG/ENV GEMINI_API_KEY with comment, FROM nginx:alpine, conf+html paths, EXPOSE 80, HEALTHCHECK wget command.",
+      "acceptanceCriteria": [
+        "Dockerfile exists at project root",
+        "Stage 1 uses node:20-alpine AS builder, runs npm ci then npm run build",
+        "ARG GEMINI_API_KEY=\"\" + ENV GEMINI_API_KEY with explanatory comment about loadEnv promotion",
+        "Stage 2 uses nginx:alpine, copies nginx.conf to /etc/nginx/conf.d/default.conf and dist to /usr/share/nginx/html",
+        "EXPOSE 80",
+        "HEALTHCHECK runs 'wget -qO- http://localhost:80/' with --interval=30s --timeout=3s --start-period=5s --retries=3"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Create docker-compose.yml with db + web services",
+      "priority": 4,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "File exists; grep confirms no version key, postgres:16-alpine, cl-postgres container, port mapping, pgdata volume, pg_isready healthcheck, cl-web, GEMINI_API_KEY build arg, WEB_PORT:-8080 mapping, depends_on YAML comment, top-level pgdata + cl-network, FORWARD PATH block.",
+      "acceptanceCriteria": [
+        "docker-compose.yml exists at project root",
+        "No 'version:' key (Compose V2)",
+        "db service: image postgres:16-alpine, container_name cl-postgres, env POSTGRES_USER/PASSWORD/DB with defaults, ports ${POSTGRES_PORT:-5432}:5432, named volume pgdata, healthcheck via pg_isready",
+        "web service: build context . with GEMINI_API_KEY arg, container_name cl-web, ports ${WEB_PORT:-8080}:80 (not 3000)",
+        "web service does NOT have depends_on:db (replaced by explanatory YAML comment)",
+        "Top-level volumes: pgdata declared",
+        "Top-level networks: cl-network with driver bridge, both services attached",
+        "Forward-path comment block at end of file shows how to add an api service consuming Postgres"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Create .env.example with Security Warning",
+      "priority": 5,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "File exists; grep confirms POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT, WEB_PORT, GEMINI_API_KEY and SECURITY WARNING block with build-time embedding warning.",
+      "acceptanceCriteria": [
+        ".env.example exists at project root",
+        "Contains POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT, WEB_PORT, GEMINI_API_KEY",
+        "Includes a SECURITY WARNING block above GEMINI_API_KEY explaining build-time embedding and recommending runtime entry via Settings or Ollama"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Update .gitignore to include .env entries",
+      "priority": 6,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "grep -x confirms .env, .env.local, .env.*.local present. git check-ignore .env returns '.env'.",
+      "acceptanceCriteria": [
+        ".gitignore contains '.env' on its own line",
+        ".gitignore contains '.env.local'",
+        ".gitignore contains '.env.*.local'",
+        "git check-ignore .env returns '.env' (verified after creating a dummy .env)"
+      ]
+    },
+    {
+      "id": "US-007",
+      "title": "Update README.md with Run-with-Docker-Compose section + Security Warning",
+      "priority": 7,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "grep confirms '## Run with Docker Compose', 'Security Warning', 'docker compose up', 'localhost:8080', 'docker compose exec db psql', 'docker compose down -v', 'Architecture Note'.",
+      "acceptanceCriteria": [
+        "README.md has a new '## Run with Docker Compose' section",
+        "Section contains a prominent '## Security Warning' block above the steps warning about build-time GEMINI_API_KEY embedding",
+        "Section documents: cp .env.example .env, docker compose up -d --build, docker compose ps, http://localhost:8080, docker compose exec db psql, docker compose down [-v]",
+        "Section contains an Architecture Note explaining Postgres has no consumer today",
+        "Section grep matches: 'Run with Docker Compose', 'Security Warning', 'docker compose up', 'localhost:8080'"
+      ]
+    },
+    {
+      "id": "US-008",
+      "title": "Compose syntax validates and gitignore behaves correctly",
+      "priority": 8,
+      "passes": true,
+      "verifiedAt": "2026-05-18",
+      "verification": "'docker compose config --quiet' exited 0. 'docker compose config --services' returned db,web. 'git check-ignore .env' returned '.env'. 'git ls-files .env' was empty.",
+      "acceptanceCriteria": [
+        "'docker compose config --quiet' exits 0",
+        "After creating a dummy .env, 'git check-ignore .env' returns '.env'",
+        "'git ls-files .env' returns empty"
+      ]
+    },
+    {
+      "id": "US-009",
+      "title": "End-to-end smoke: containers boot healthy and SPA serves",
+      "priority": 9,
+      "passes": true,
+      "verifiedAt": "2026-05-19",
+      "verification": "All 9 story-level acceptance criteria PASS. `docker compose up -d --build` exited 0; both containers reached healthy within 12s after fix below; pg_isready returned 0; psql 'SELECT 1' returned 1; curl HTTP/1.1 200 OK with X-Frame-Options + X-Content-Type-Options headers; body contained '<div id=\"root\">' and 'Context Lattice' (2 occurrences); data persisted across down (without -v) + up cycle (seeded row 'persist-marker-9k3p' survived); `docker compose down -v` removed `cl_intelligent_orchestration_pgdata` volume cleanly (verified with --filter name=); zero .ts/.tsx files modified.",
+      "fixesAppliedDuringVerification": [
+        "Dockerfile HEALTHCHECK: changed 'wget http://localhost:80/' to 'wget http://127.0.0.1:80/'. Root cause: BusyBox wget in nginx:alpine resolves 'localhost' to ::1 (IPv6) first, but our nginx config only listens on 0.0.0.0:80 (IPv4), so the healthcheck got Connection refused. The functional path through 0.0.0.0:8088 (host) -> container :80 was always working; only the in-container loopback was IPv6/IPv4 mismatched. Single-character fix; no nginx.conf change needed.",
+        ".env WEB_PORT changed from 8080 to 8088. Root cause: host port 8080 was already allocated by an unrelated container (videodoc-whisper-gpu from a different project). .env.example default (8080) was kept; .env is gitignored so this override does not affect future setups."
+      ],
+      "deviationsFromPlan": [
+        "Final image size is 93.7MB (multi-arch manifest list amd64+arm64), not the <50MB target in the plan's general acceptance list. This story's ACs did not include the <50MB threshold; a single-platform amd64 image is roughly half of 93.7MB. Acceptable for local dev; revisit with `--platform linux/amd64` if size is critical."
+      ],
+      "blockedBy": null,
+      "deferredHandoff_RESOLVED": [
+        "After system restart, from project root run: cp .env.example .env (if not present)",
+        "docker compose config --quiet  # should already pass (verified earlier)",
+        "docker compose up -d --build",
+        "Wait ~60s, then: docker compose ps  # both services should be (healthy)",
+        "docker compose exec db pg_isready -U context_lattice",
+        "docker compose exec db psql -U context_lattice -d context_lattice -c 'SELECT 1'",
+        "curl -sI http://localhost:8080  # expect HTTP 200",
+        "curl -fsS http://localhost:8080 | grep -o '<div id=\"root\">'",
+        "curl -fsS http://localhost:8080 | grep -c 'Context Lattice'",
+        "docker compose down -v  # cleanup"
+      ],
+      "acceptanceCriteria": [
+        "'docker compose up -d --build' exits 0",
+        "Both containers reach 'healthy' state within 90s",
+        "'docker compose exec db pg_isready -U context_lattice' returns 0",
+        "'docker compose exec db psql -U context_lattice -d context_lattice -c \"SELECT 1\"' returns 1",
+        "'curl -sI http://localhost:8080' returns HTTP 200",
+        "'curl -fsS http://localhost:8080' body contains '<div id=\"root\">'",
+        "'curl -fsS http://localhost:8080' body contains 'Context Lattice'",
+        "'docker compose down -v' exits 0 and removes the pgdata volume",
+        "No .ts or .tsx files were modified during this implementation"
+      ]
+    }
+  ]
+}

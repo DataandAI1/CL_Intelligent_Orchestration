@@ -1,0 +1,12 @@
+{
+  "active": true,
+  "iteration": 1,
+  "max_iterations": 100,
+  "started_at": "2026-05-19T00:02:01.497Z",
+  "prompt": "Continue here: Open .omc/RESUME.md — it has the exact command sequence to verify US-009 and flip its passes flag. Short version:\n\n\ncd c:/Users/reyno/Projects/CL_Intelligent_Orchestration\ndocker compose up -d --build\nsleep 60 && docker compose ps\ncurl -fsS http://localhost:8080 | grep -o '<div id=\"root\">'\ndocker compose down -v\nIf those pass, edit .omc/prd.json US-009 → \"passes\": true and you're fully done. No further Ralph iteration needed.",
+  "session_id": "a52e0b19-b09c-4f08-9350-e88a575dead2",
+  "project_path": "c:\\Users\\reyno\\Projects\\CL_Intelligent_Orchestration",
+  "linked_ultrawork": true,
+  "awaiting_confirmation": true,
+  "last_checked_at": "2026-05-19T00:02:01.497Z"
+}

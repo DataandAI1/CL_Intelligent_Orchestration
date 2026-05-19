@@ -4,7 +4,16 @@
       "mcp__plugin_oh-my-claudecode_t__state_list_active",
       "mcp__plugin_oh-my-claudecode_t__state_clear",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(docker compose *)",
+      "Bash(git check-ignore *)",
+      "Bash(tee /tmp/compose-up.log)",
+      "Bash(echo \"---EXIT_CODE:$?---\")",
+      "Bash(docker info *)",
+      "Bash(grep -E '\\\\.\\(ts|tsx\\)$')",
+      "Bash(docker rm *)",
+      "Bash(echo \"---EXIT:$?---\")",
+      "Bash(docker volume *)"
     ]
   }
 }

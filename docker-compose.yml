@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-context_lattice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-context_lattice_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-context_lattice}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-context_lattice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - cl-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    container_name: cl-web
+    restart: unless-stopped
+    ports:
+      # Host port 8080 -> container port 80 (nginx).
+      # Deliberately NOT 3000 to avoid collision with 'npm run dev' (Vite dev server).
+      - "${WEB_PORT:-8080}:80"
+    # Add 'depends_on: db (condition: service_healthy)' when a backend service is introduced that consumes the database.
+    networks:
+      - cl-network
+
+volumes:
+  # Named volume for Postgres data persistence.
+  # Data survives 'docker compose down' but is removed by 'docker compose down -v'.
+  # Named volumes are managed by Docker (stored in /var/lib/docker/volumes/) and
+  # are preferred over bind mounts for database data because:
+  #   1. Better I/O performance (no filesystem translation layer)
+  #   2. No host path coupling
+  #   3. Portable across machines
+  pgdata:
+
+networks:
+  cl-network:
+    driver: bridge
+
+# === FORWARD PATH ===
+# To add a backend service that consumes Postgres, append a service like:
+#
+#   api:
+#     build:
+#       context: ./api
+#       dockerfile: Dockerfile
+#     environment:
+#       DATABASE_URL: postgres://${POSTGRES_USER:-context_lattice}:${POSTGRES_PASSWORD:-context_lattice_dev}@db:5432/${POSTGRES_DB:-context_lattice}
+#     ports:
+#       - "4000:4000"
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#     networks:
+#       - cl-network
+#
+# The 'web' service would then proxy API requests via nginx:
+#   location /api/ {
+#       proxy_pass http://api:4000/;
+#   }

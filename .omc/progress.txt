@@ -1,0 +1,78 @@
+Ralph Loop Progress: Docker + Postgres Containerization
+=======================================================
+
+Iteration 1 (2026-05-18) — initial implementation
+------------------------------------------------
+File deliverables (US-001 through US-008): COMPLETE and verified by grep/exec checks.
+
+Created (5 new files):
+  - .dockerignore        (12 entries excluding node_modules, .git, .env*, etc.)
+  - nginx.conf           (SPA fallback, 1y cache for static assets, X-Frame-Options + X-Content-Type-Options)
+  - Dockerfile           (multi-stage: node:20-alpine builder -> nginx:alpine, with HEALTHCHECK)
+  - docker-compose.yml   (db: postgres:16-alpine + web: nginx, named volume pgdata, bridge net cl-network, no version key, port 8080:80 default, no depends_on, FORWARD PATH block)
+  - .env.example         (POSTGRES_*, WEB_PORT, GEMINI_API_KEY with prominent SECURITY WARNING block)
+
+Modified (2 files):
+  - .gitignore           (appended .env, .env.local, .env.*.local)
+  - README.md            (added "Run with Docker Compose" section with Security Warning, steps, stopping/cleanup, architecture note)
+
+Daemonless verifications (PASS):
+  - `docker compose config --quiet` exited 0
+  - `docker compose config --services` returned: db, web
+  - `git check-ignore .env` returned `.env`
+  - `git ls-files .env` returned empty
+  - No .ts/.tsx files modified (git status --porcelain confirmed)
+
+Verifications gated on Docker daemon (US-009): BLOCKED
+  - Docker CLI is present (29.4.1, Compose v5.1.3)
+  - Docker Desktop daemon was not running at session start
+  - Docker Desktop launched, but the named pipe returned 500 Internal Server Error past the first 120s poll
+  - Second launch via PowerShell Start-Process is polling for up to 240s in background task b2imy19q4
+  - Additional bash poll (baq2dfjon) running 2-min retry
+  - On daemon-up, the path forward is: `docker compose up -d --build`, wait healthy, run all curl checks, then `docker compose down -v`
+  - SESSION WRAP: user reported Docker requires a hard system restart. Background polls stopped. US-009 marked DEFERRED in prd.json with full executable handoff. Architect verification passed APPROVED on the file-deliverable scope (US-001..US-008). Resume instructions written to .omc/RESUME.md. Deslop pass skipped — no application code changed (only infrastructure files), so ai-slop-cleaner has no useful target. Exiting Ralph cleanly via /oh-my-claudecode:cancel.
+
+Iteration 2 (2026-05-19) — US-009 resumed and verified
+------------------------------------------------------
+After host reboot, Docker daemon came up cleanly (29.4.1 / Compose v5.1.3). Resumed verification.
+
+Issue 1: host port 8080 conflict
+  - Discovery: `docker compose up -d --build` succeeded for cl-postgres but cl-web failed with "Bind for 0.0.0.0:8080 failed: port is already allocated".
+  - Root cause: container `videodoc-whisper-gpu` (from an unrelated project) was bound to host :8080.
+  - Fix: set WEB_PORT=8088 in .env (gitignored — does not affect .env.example default of 8080).
+
+Issue 2: Dockerfile HEALTHCHECK marked cl-web unhealthy despite working HTTP
+  - Symptom: every external check (curl -sI http://localhost:8088) returned HTTP/1.1 200 with correct body and headers, but `docker inspect` showed cl-web as unhealthy.
+  - Diagnosis: `docker inspect cl-web` health log showed "wget: can't connect to remote host: Connection refused". Inside the container, `wget http://localhost:80/` failed but `wget http://127.0.0.1:80/` succeeded. nginx was listening on tcp 0.0.0.0:80 (IPv4 only).
+  - Root cause: BusyBox wget in nginx:alpine resolves "localhost" to ::1 (IPv6) first. nginx.conf has only `listen 80;` (IPv4), no `listen [::]:80;`, so the IPv6 connection was refused.
+  - Fix (one character): change Dockerfile HEALTHCHECK from `wget -qO- http://localhost:80/` to `wget -qO- http://127.0.0.1:80/`. After rebuild, cl-web reached healthy in ~12s.
+
+Acceptance battery (all PASS):
+  - docker compose up -d --build exit 0
+  - both containers healthy within 12s (after fix)
+  - pg_isready returns 0
+  - psql "SELECT 1" returns 1
+  - curl -sI http://localhost:8088 returns HTTP/1.1 200 OK with X-Frame-Options SAMEORIGIN + X-Content-Type-Options nosniff
+  - curl body contains <div id="root">
+  - curl body contains "Context Lattice" (2 occurrences)
+  - data persistence: seeded row 'persist-marker-9k3p' survived down (without -v) + up cycle
+  - docker compose down -v cleanly removed cl_intelligent_orchestration_pgdata volume (verified with --filter name=)
+  - zero .ts/.tsx files modified across the entire effort
+
+Deviation from plan (noted, not blocker):
+  - Final image size is 93.7MB (multi-arch manifest list amd64+arm64); plan's general AC #13 targeted <50MB. The single-platform image would be ~half. US-009's story-level ACs did not include this threshold.
+
+FINAL: All 9 stories pass. US-009 flipped to passes:true with verifiedAt=2026-05-19. RESUME.md updated to reflect completion.
+
+Codebase learnings captured during planning:
+  - The app is a pure client-side React 19 + Vite 6 SPA (no backend exists today)
+  - GEMINI_API_KEY is compiled into the client bundle at build time via Vite `define` in vite.config.ts — containerization makes this leak worse (image is distributable artifact). Plan documents this prominently in README + .env.example.
+  - LLM provider abstraction in services/llm/ supports Gemini and Ollama (selected at runtime via SettingsContext)
+  - Tailwind, Google Fonts, and the importmap in index.html are runtime browser CDN dependencies; Vite bundle resolves React + @google/genai from node_modules at build time.
+
+Decisions that survived consensus:
+  - Chose Option A (compose-only) over Option B (introduce backend) — user did not request backend, scope discipline.
+  - Removed depends_on:db from web service (SPA does not consume DB today; YAML comment marks the re-add point).
+  - Default host port is 8080, not 3000, to avoid collision with `npm run dev`.
+  - No version: key in compose (Compose V2 ignores it and warns).
+  - Production image is nginx-only static files; no Node runtime in the final image.

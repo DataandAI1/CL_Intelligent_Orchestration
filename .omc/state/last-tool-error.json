@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd c:/Users/reyno/Projects/CL_Intelligent_Orchestration && echo \\\"--- ps ---\\\" && docker compose ps && echo \\\"--- waiting up to 90s for both services healthy ---\\\" && for i in $(seq 1 45);...",
+  "error": "Exit code 1\n--- ps ---\nfailed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.",
+  "timestamp": "2026-05-18T21:36:36.019Z",
+  "retry_count": 1
+}
