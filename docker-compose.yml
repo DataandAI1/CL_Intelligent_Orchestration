@@ -20,54 +20,77 @@ services:
     networks:
       - cl-network
 
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: cl-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-context_lattice}:${POSTGRES_PASSWORD:-context_lattice_dev}@db:5432/${POSTGRES_DB:-context_lattice}
+      PORT: "4000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:${WEB_PORT:-8080}}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cl-network
+
+  # One-shot migration runner. Invoke with:
+  #   docker compose --profile migrate run --rm migrate
+  # It uses the same image as the api service and runs node-pg-migrate against the db.
+  migrate:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: cl-migrate
+    profiles: ["migrate"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-context_lattice}:${POSTGRES_PASSWORD:-context_lattice_dev}@db:5432/${POSTGRES_DB:-context_lattice}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cl-network
+    command: ["npx", "node-pg-migrate", "up"]
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:${API_PORT:-4000}}
     container_name: cl-web
     restart: unless-stopped
     ports:
       # Host port 8080 -> container port 80 (nginx).
       # Deliberately NOT 3000 to avoid collision with 'npm run dev' (Vite dev server).
       - "${WEB_PORT:-8080}:80"
-    # Add 'depends_on: db (condition: service_healthy)' when a backend service is introduced that consumes the database.
+    depends_on:
+      - api
     networks:
       - cl-network
 
 volumes:
   # Named volume for Postgres data persistence.
   # Data survives 'docker compose down' but is removed by 'docker compose down -v'.
-  # Named volumes are managed by Docker (stored in /var/lib/docker/volumes/) and
-  # are preferred over bind mounts for database data because:
-  #   1. Better I/O performance (no filesystem translation layer)
-  #   2. No host path coupling
-  #   3. Portable across machines
   pgdata:
 
 networks:
   cl-network:
     driver: bridge
 
-# === FORWARD PATH ===
-# To add a backend service that consumes Postgres, append a service like:
-#
-#   api:
-#     build:
-#       context: ./api
-#       dockerfile: Dockerfile
-#     environment:
-#       DATABASE_URL: postgres://${POSTGRES_USER:-context_lattice}:${POSTGRES_PASSWORD:-context_lattice_dev}@db:5432/${POSTGRES_DB:-context_lattice}
-#     ports:
-#       - "4000:4000"
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#     networks:
-#       - cl-network
-#
-# The 'web' service would then proxy API requests via nginx:
-#   location /api/ {
-#       proxy_pass http://api:4000/;
-#   }
+# === USAGE ===
+# 1. First-time setup:
+#      docker compose up -d db
+#      docker compose --profile migrate run --rm migrate
+#      docker compose up -d api web
+# 2. Daily start:
+#      docker compose up -d
+# 3. Reset DB:
+#      docker compose down -v && docker compose up -d db && \
+#        docker compose --profile migrate run --rm migrate && \
+#        docker compose up -d api web

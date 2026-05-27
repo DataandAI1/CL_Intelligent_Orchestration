@@ -3,6 +3,9 @@ import { ProjectRequirements } from '../types';
 import { analyzeProjectAssets } from '../services/agentService';
 import { ConfigureBanner } from '../components/ConfigureBanner';
 import { useSettingsContext } from '../services/settings/SettingsContext';
+import { useProjectContext } from '../services/project/ProjectContext';
+import { getProject } from '../services/api/projects';
+import { apiRequirementsToSpa } from '../services/api/projects';
 
 interface Props {
   onStart: (requirements: ProjectRequirements) => void;
@@ -13,11 +16,51 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
   const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
   const showBanner = !isConfigured && !hasFallbackKey;
 
+  const {
+    projects,
+    apiAvailable,
+    error: projectsError,
+    createProject,
+    selectProject,
+    deleteProject,
+    refreshProjects,
+  } = useProjectContext();
+
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [fileContent, setFileContent] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadProject = async (id: string) => {
+    setLoadingProjectId(id);
+    try {
+      const detail = await getProject(id);
+      selectProject(id);
+      const reqs: ProjectRequirements = apiRequirementsToSpa(
+        detail.requirements,
+        detail.name,
+        detail.description
+      );
+      onStart(reqs);
+    } catch (err) {
+      console.warn('[StartPage] loadProject failed:', err);
+      alert('Failed to load project. See console for details.');
+    } finally {
+      setLoadingProjectId(null);
+    }
+  };
+
+  const handleDeleteProject = async (id: string, name: string) => {
+    if (!confirm(`Delete project "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteProject(id);
+    } catch (err) {
+      console.warn('[StartPage] deleteProject failed:', err);
+      alert('Failed to delete project.');
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -34,7 +77,7 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
     }
 
     setIsAnalyzing(true);
-    
+
     let requirements: ProjectRequirements = {
         projectName,
         projectDescription,
@@ -49,6 +92,14 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
     if (fileContent.trim()) {
         const analyzed = await analyzeProjectAssets(projectName, projectDescription, fileContent);
         requirements = { ...requirements, ...analyzed };
+    }
+
+    // Best-effort: create the API project so subsequent transitions can persist data.
+    try {
+      await createProject({ name: projectName, description: projectDescription || null });
+      refreshProjects().catch(() => undefined);
+    } catch (err) {
+      console.warn('[StartPage] createProject failed (continuing offline):', err);
     }
 
     setIsAnalyzing(false);
@@ -75,8 +126,8 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
             </div>
             
             <h1 className="text-6xl md:text-7xl font-bold text-white leading-[0.9] tracking-tight">
-              CONTEXT <br/>
-              <span className="text-gradient-gold">LATTICE</span>
+              AGENTIC SYSTEM <br/>
+              <span className="text-gradient-gold">BUILDER</span>
             </h1>
             
             <p className="text-lg text-[#B8B8B8] leading-relaxed max-w-md font-light border-l-2 border-[#D4B980]/30 pl-6">
@@ -101,15 +152,62 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
         </div>
 
         {/* Right Column: Interactive Setup Card */}
-        <div className="lg:col-span-7">
+        <div className="lg:col-span-7 space-y-6">
           {showBanner && <ConfigureBanner />}
+
+          {/* Existing Projects */}
+          {apiAvailable && projects.length > 0 && (
+            <div className="bg-[#1A1A1A]/80 border border-[#333333] rounded-xl p-5 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-[#D4B980] uppercase tracking-widest">Recent Projects</h3>
+                <span className="text-[10px] text-[#808080]">{projects.length} stored</span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                {projects.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 p-3 bg-[#2A2A2A]/60 border border-[#333333] rounded-lg hover:border-[#2A5F8C]/60 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-white truncate">{p.name}</div>
+                      <div className="text-[10px] text-[#808080] font-mono mt-0.5">
+                        Updated {new Date(p.updated_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleLoadProject(p.id)}
+                      disabled={loadingProjectId !== null}
+                      className="bg-[#2A5F8C] hover:bg-[#1A3F5C] disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded shrink-0"
+                    >
+                      {loadingProjectId === p.id ? 'Loading…' : 'Load'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProject(p.id, p.name)}
+                      disabled={loadingProjectId !== null}
+                      aria-label={`Delete ${p.name}`}
+                      className="text-[#808080] hover:text-[#C62828] disabled:opacity-30 text-lg leading-none px-1"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!apiAvailable && projectsError && (
+            <div className="bg-[#F57C00]/10 border border-[#F57C00]/30 rounded-lg px-4 py-3 text-xs text-[#F57C00] font-mono">
+              Backend API unreachable — projects won't persist this session. Detail: {projectsError}
+            </div>
+          )}
+
           <div className="glass-panel p-1 rounded-2xl shadow-2xl">
             <div className="bg-[#1A1A1A]/90 backdrop-blur-xl rounded-xl p-8 sm:p-10 border border-[#333333]">
               
               <div className="flex justify-between items-start mb-8">
                 <div>
                    <h2 className="text-2xl font-bold text-white mb-2">Initialize Project</h2>
-                   <p className="text-sm text-[#808080]">Configure the lattice parameters for your new intelligent system.</p>
+                   <p className="text-sm text-[#808080]">Configure the system parameters for your new intelligent system.</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-[#2A5F8C]/10 flex items-center justify-center border border-[#2A5F8C]/20 text-xl">
                   💠
@@ -183,7 +281,7 @@ export const StartPage: React.FC<Props> = ({ onStart }) => {
                       </>
                   ) : (
                       <>
-                        <span>Generate Context Lattice</span>
+                        <span>Generate Agentic System</span>
                         <span className="text-[#D4B980]">→</span>
                       </>
                   )}

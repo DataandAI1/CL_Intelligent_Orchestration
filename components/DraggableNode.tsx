@@ -40,7 +40,7 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
     return () => observer.disconnect();
   }, [node.id, node.width, node.height, onResize]);
 
-  // Context Lattice 2025 Node Styles
+  // Agentic System Builder 2025 Node Styles
   const getTypeStyles = (type: NodeType) => {
     switch (type) {
       case NodeType.AGENT: 

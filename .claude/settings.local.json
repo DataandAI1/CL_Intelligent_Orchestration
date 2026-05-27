@@ -13,7 +13,19 @@
       "Bash(grep -E '\\\\.\\(ts|tsx\\)$')",
       "Bash(docker rm *)",
       "Bash(echo \"---EXIT:$?---\")",
-      "Bash(docker volume *)"
+      "Bash(docker volume *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "mcp__plugin_oh-my-claudecode_t__state_read",
+      "Bash(curl -sI http://localhost:8088)",
+      "Bash(curl -fsS http://localhost:8088)",
+      "Bash(docker image *)",
+      "Bash(git stash *)",
+      "Bash(docker version *)",
+      "Bash(DATABASE_URL=\"postgres://context_lattice:context_lattice_dev@localhost:5432/context_lattice\" npx node-pg-migrate up)",
+      "Bash(DATABASE_URL=\"postgres://context_lattice:context_lattice_dev@localhost:5432/context_lattice\" PORT=4001 node dist/index.js)",
+      "Bash(curl -sf http://localhost:4001/api/health)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

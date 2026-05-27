@@ -70,7 +70,7 @@ export const HumanIcon: React.FC<IconProps> = ({ className }) => (
   </svg>
 );
 
-export const LatticeIcon: React.FC<IconProps> = ({ className }) => (
+export const SystemIcon: React.FC<IconProps> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path d="M12 2L20.66 7V17L12 22L3.34 17V7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M12 12V22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -166,13 +166,12 @@ export const NodeIcon = ({ type, className = "w-6 h-6" }: { type: string, classN
     case 'HUMAN': 
     case 'HUMANINTHELOOP':
         return <HumanIcon className={className} />;
-    case 'PROCESS': 
+    case 'PROCESS':
     case 'PROCESSES':
-    case 'SYSTEM': 
-    case 'LATTICE':
-        return <LatticeIcon className={className} />;
+    case 'SYSTEM':
+        return <SystemIcon className={className} />;
     case 'USECASES':
         return <AgentIcon className={className} />;
-    default: return <LatticeIcon className={className} />;
+    default: return <SystemIcon className={className} />;
   }
 };

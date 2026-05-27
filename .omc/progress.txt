@@ -76,3 +76,189 @@ Decisions that survived consensus:
   - Default host port is 8080, not 3000, to avoid collision with `npm run dev`.
   - No version: key in compose (Compose V2 ignores it and warns).
   - Production image is nginx-only static files; no Node runtime in the final image.
+
+
+=======================================================
+Iteration: Draw.io Export Service (2026-05-26)
+=======================================================
+
+Starting ralph loop on plan: .omc/plans/drawio-export-service.md
+Approved by Planner/Architect/Critic consensus (2 iterations).
+PRD: 8 user stories (US-001..US-008) derived from plan implementation steps.
+
+
+Files added (10 new in services/drawio/):
+  - escape.ts      — escapeXml() — & first, then < > " '
+  - ids.ts         — toDrawioId() + buildIdMap() with collision suffixing (_2, _3, …)
+  - types.ts       — DrawioExportResult, ValidationIssue
+  - styles.ts      — DRAWIO_STYLES (agent/tool/data_store/goal/human/edge_default)
+  - mapping.ts     — getVertexStyle + getDefaultDimensions with exhaustive switch (`const _: never = type`)
+  - compiler.ts    — compileDrawio: root cells, coord normalization (-min+100 only when negative), tooltip via ;-stripped description, mxfile wrap
+  - validation.ts  — validateDrawioXml via DOMParser, errors block, warnings non-blocking
+  - export.ts      — exportDesignToDrawio orchestrator: empty-canvas alert, validate, blob download
+  - filename.ts    — safeFilename(name, ext): sanitizes [^a-zA-Z0-9_-] → _ ; fallback Agentic_System_Blueprint
+  - index.ts       — barrel: exportDesignToDrawio + safeFilename + types only (trimmed)
+
+Test files (5 in services/drawio/__tests__/, 39 tests total):
+  - escape.test.ts (6) — & first / entities / quotes / empty / passthrough / combined
+  - ids.test.ts (8) — normalize / leading digit / preserve _- / trim / collisions
+  - compiler.test.ts (14) — root cells / mxfile wrap / each NodeType / edges / dangling warning / orphan warning / XSS escape / tooltip single-escape (regression) / ;= replaced in tooltip / coord normalization / dimensions / projectName
+  - validation.test.ts (6) — happy path / malformed / wrong root / missing cells 0&1 / vertex geometry warn / edge unknown source-target warn
+  - filename.test.ts (5) — extension append / undefined fallback / whitespace fallback / sanitize / preserve _-
+
+Modified files:
+  - views/DesignView.tsx — added import {exportDesignToDrawio, safeFilename}, added handleExportDrawio, replaced single export button with flex row of two flex-1 buttons (Export Markdown / Export Draw.io), switched markdown export's a.download to safeFilename(requirements.projectName, 'md')
+  - package.json — added vitest, jsdom, @vitest/ui dev deps; scripts test / test:watch
+  - vitest.config.ts — new; environment: 'jsdom', include __tests__ glob
+
+Architect review (iteration 1): APPROVED-WITH-NOTES
+  - One real bug: double-escape in compiler.ts:48+52 — node.description was escaped at line 48 (inner), then the entire style was escaped again at line 52 (outer), producing &amp;amp; instead of &amp; in tooltip text.
+  - Fix: removed inner escapeXml from tooltip, left outer escapeXml on whole style. Also pre-replaced [;=] with space to prevent Draw.io's ;-delimited style parser from truncating the tooltip.
+  - Added 2 regression tests: 'XML-escapes tooltip text exactly once (no double-encoding)' and 'replaces ; and = inside description so they do not break style parsing'.
+
+Deslop pass (Step 7.5):
+  Pass 1 — Dead code: deleted edge_dashed from styles.ts (no consumer; plan called it 'reserved for future' but YAGNI). Deleted DrawioExportOptions interface from types.ts and barrel — never imported.
+  Pass 3 — Trim barrel: removed compileDrawio and validateDrawioXml from index.ts re-exports — only test files used them, and they import directly via relative paths. Public surface now: exportDesignToDrawio, safeFilename, DrawioExportResult, ValidationIssue.
+  Pass 4 — Test reinforcement: added filename.test.ts (5 tests for safeFilename — uncovered before).
+
+Post-deslop regression (Step 7.6): 39/39 tests pass, npm run build exit 0 (63 modules, 1.26s, pre-existing chunk-size advisory only).
+
+Out of scope per plan, not built:
+  - LLM prompt-to-diagram pipeline (Section 16 of source doc)
+  - Server APIs, Prisma DB, repair loop, version history
+  - Miro API integration, .vsdx export, SVG/PNG preview export
+  - Draw.io iframe embed preview (follow-up)
+  - Manual E2E open-in-Draw.io verification (requires browser; documented in plan acceptance criteria as user-side gate)
+
+Codebase learnings:
+  - Vite project resolves @vitejs/plugin-react via CDN importmap in index.html for runtime React, but vitest needs jsdom because compiler validation uses DOMParser.
+  - npm install rewrites package.json scripts ordering — had to re-apply the test script after install completed.
+  - NodeType is an enum (types.ts:3-9). Exhaustive switch with `const _: never = type; throw` produces TS2322 compile error if a new value is added.
+  - Node positions are stored in world coordinates (DesignView.tsx:115-122 screenToWorld); 1:1 mapping to Draw.io page coords works after normalizing negatives to >=100.
+
+
+=======================================================
+Iteration: Fix Project Plan view not displaying (2026-05-27)
+=======================================================
+
+User report: "the Project plan does not display". Investigation found five interacting failure modes in views/ProjectPlanner.tsx and the generateProjectPlan schema.
+
+Root causes (evidence-based):
+  1. views/ProjectPlanner.tsx:24-33 — fetchPlan async had no try/catch. services/llm/index.ts:31 throws when no settings AND no API_KEY env. The unhandled rejection meant setLoading(false) never ran, leaving the user on the infinite "BUILDING PROJECT PLAN..." spinner.
+  2. services/agentService.ts:545-609 — generateProjectPlan JSON schema had NO `required` arrays at any level (compare to checkRequirementsCompleteness which does have required at line 202). Gemini was returning partial objects with missing fields.
+  3. views/ProjectPlanner.tsx:36-50 — getSeverityColor(risk.severity) and getComplexityBadge(task.complexity) called .toLowerCase() on possibly-undefined values, throwing a TypeError mid-render which blanked the entire view.
+  4. views/ProjectPlanner.tsx:114-128 — null-plan empty state was a dead end: just "Failed to generate plan." text + back link. No retry, no error detail.
+  5. views/ProjectPlanner.tsx:148,152 — header rendered `${plan.totalEstimatedEffortHours}h` and `${plan.totalEstimatedDuration}` directly, producing "undefinedh" / "undefined" text when fields were absent.
+
+Fixes (files modified):
+  - views/ProjectPlanner.tsx
+      - Moved fetchPlan to outer scope; added try/await/catch/finally. setLoading(false) is in finally and always fires.
+      - Added errorMessage: string | null state. catch captures err.message (or default). result === null also sets errorMessage.
+      - Added safeText(value, fallback='N/A') helper. All header / phase / task / resource / risk renderings and the markdown export use it for any potentially-missing string field. Numeric fields use `value != null ? \`${value}h\` : '—'` pattern.
+      - getSeverityColor and getComplexityBadge signatures now (string | undefined | null) -> use (value ?? '').toLowerCase().
+      - Empty-state block redesigned: shows "Failed to generate plan." + the error detail in a styled box + Retry button (re-invokes fetchPlan) + Return to Design.
+  - services/agentService.ts
+      - generateProjectPlan jsonSchema gained required arrays at every level: top-level, phases.items, phases.items.tasks.items, resources.items, risks.items.
+      - generateProjectPlan catch now re-throws instead of returning null (was swallowing all detail) — the single caller ProjectPlanner.tsx already has try/catch around it.
+
+Provider check: services/llm/geminiProvider.ts:37-39 already copies schema.required when present, so no provider-side change was needed.
+
+Verification:
+  - `npm run build`: vite v6.4.2, 63 modules transformed, 0 TS errors, exit 0, 1.44s.
+      Note: First build attempt failed with "html-inline-proxy: No matching HTML proxy module" — confirmed transient (clean-HEAD reproduction also showed this on first run after dependency churn). Retry after `git stash`/`git stash pop` cycle passed cleanly. Not introduced by these changes.
+  - `npm test`: vitest v4.1.7, 5 test files, 39/39 tests pass (drawio export suite unchanged), 874ms.
+
+Out of scope (not pursued):
+  - Adding new unit tests for ProjectPlanner.tsx — the view has no existing test harness and the existing scope is "fix display" not "build test infrastructure". The fixes are deterministic null-safety/error-handling — verifiable by code reading.
+  - Caching/memoizing the plan across navigations — useEffect deps remain [] intentionally so retry is explicit, not automatic on prop change.
+
+
+=======================================================
+Iteration: Postgres + Backend API + SPA persistence (2026-05-27)
+=======================================================
+
+Scope chosen via AskUserQuestion: Schema + backend API + SPA wiring; all four data categories (projects, requirements, design nodes+edges, generated artifacts); node-pg-migrate + raw SQL.
+
+New service: server/ (Node.js + TypeScript + Express + zod + pg + node-pg-migrate)
+  - server/package.json (express ^4.21, cors, pg, zod, node-pg-migrate)
+  - server/tsconfig.json (strict, target ES2022, module CommonJS)
+  - server/.node-pg-migraterc.json (SQL mode, public schema, verbose)
+  - server/migrations/1716800000000_initial-schema.sql
+      - pgcrypto extension
+      - set_updated_at() trigger function
+      - projects (id uuid pk, name, description, created_at, updated_at + BEFORE UPDATE trigger)
+      - requirement_category enum (goals/processes/use_cases/technologies/data_sources/human_in_the_loop)
+      - requirement_items (project_id FK CASCADE, category, content, position, idx)
+      - node_type enum (AGENT/TOOL/DATA/GOAL/HUMAN)
+      - design_nodes (project_id FK, client_node_id, type, label, description, position_x/y, width, height, instructions, node_schema, UNIQUE(project_id, client_node_id))
+      - design_edges (project_id FK, client_edge_id, source_client_node_id, target_client_node_id, label, UNIQUE)
+      - artifact_kind enum (project_plan/simulation/pattern_comparison/drawio_xml/markdown_export/architecture_analysis)
+      - artifacts (project_id FK, kind, payload JSONB, metadata JSONB, idx)
+      - Full Down migration drops all of the above
+  - server/src/
+      - types.ts (NodeType, RequirementCategory, ArtifactKind, Project, RequirementItemRow, DesignNodeWire, DesignEdgeWire, ArtifactRow, CATEGORY_TO_KEY map)
+      - db.ts (pg Pool with PG_POOL_MAX / PG_IDLE_TIMEOUT_MS env knobs, query(), withTransaction() helper, healthCheck())
+      - middleware/{request-id,validate,error-handler}.ts
+      - schemas/{projects,requirements,design,artifacts}.ts (zod)
+      - routes/{health,projects,requirements,design,artifacts}.ts
+      - app.ts (Express composition: requestId -> cors(CORS_ORIGIN) -> json 10mb -> routers -> notFound -> errorHandler)
+      - index.ts (boot + SIGINT/SIGTERM clean shutdown)
+  - server/Dockerfile (multi-stage: node:20-alpine builder + slim runtime, HEALTHCHECK on /api/health)
+  - server/.dockerignore
+
+Updated:
+  - docker-compose.yml — added `api` service (depends_on db service_healthy, DATABASE_URL via compose interpolation, port API_PORT:4000) and a one-shot `migrate` service in a `migrate` profile (npx node-pg-migrate up). `web` now depends_on api and accepts VITE_API_BASE_URL build arg.
+  - Dockerfile (SPA) — added VITE_API_BASE_URL ARG/ENV alongside GEMINI_API_KEY.
+  - .env.example — added API_PORT, CORS_ORIGIN, VITE_API_BASE_URL with security warning expansion mentioning DATABASE_URL exposure.
+  - vite.config.ts — added `process.env.VITE_API_BASE_URL` to the define block (default http://localhost:4000).
+
+SPA wiring (new files):
+  - services/api/{client,projects,requirements,design,artifacts,index}.ts — typed fetch wrappers + helper conversions (apiRequirementsToSpa, requirementsToApi)
+  - services/project/ProjectContext.tsx — React context with {projects, currentProjectId (localStorage-persisted), loading, error, apiAvailable, selectProject, createProject, deleteProject, refreshProjects}
+
+SPA wiring (modified files):
+  - App.tsx — refactored to App -> ProjectProvider -> AppShell; AppShell pulls useProjectContext and adds persistRequirements (gather→design) and saveDesign (design→plan), both best-effort with .catch logging.
+  - views/StartPage.tsx — adds "Recent Projects" panel above the Initialize Project card (Load/Delete buttons). On Generate, createProject is called via API to register the new project, then onStart proceeds with the local SPA flow. Loading an existing project fetches /api/projects/:id, sets currentProjectId, and seeds local state through onStart with apiRequirementsToSpa.
+  - views/DesignView.tsx — handleExportDrawio passes an onXml callback that POSTs a drawio_xml artifact (best-effort). handleExport (markdown) POSTs a markdown_export artifact (best-effort).
+  - views/ProjectPlanner.tsx — fetchPlan POSTs a project_plan artifact on success (best-effort).
+  - services/drawio/export.ts — extended signature with optional `{ onXml: (xml, filename) => void }` options arg; the callback fires after validation passes and before the browser download. Backward-compatible: existing call sites without options behave exactly as before.
+
+Build + test verification:
+  - SPA `npm run build` -> vite 6.4.2, 69 modules transformed, exit 0, dist/assets/index-CsykVdty.js 617.44 kB (148.19 kB gzip), 1.27s.
+  - Server `cd server && npm run build` -> tsc exit 0.
+  - SPA `npm test` -> 5 files, 39 tests pass (drawio suite unaffected by the export.ts signature extension because tests target compiler/validation/escape/ids/filename directly).
+  - `docker compose config --quiet` -> exit 0.
+
+End-to-end smoke (host-run API on port 4001 against docker cl-postgres on host port 5432):
+  - docker compose up -d db -> cl-postgres healthy
+  - DATABASE_URL=postgres://context_lattice:context_lattice_dev@localhost:5432/context_lattice npx node-pg-migrate up
+      Output ended with "Migrations complete!" after emitting the full DDL.
+      docker exec cl-postgres psql -c '\dt' lists: artifacts, design_edges, design_nodes, pgmigrations, projects, requirement_items.
+  - DATABASE_URL=... PORT=4001 node dist/index.js (background)
+  - curl /api/health -> {"status":"ok","db":"up"}
+  - POST /api/projects {"name":"Smoke Test Project","description":"..."} -> 201 id=2aa7cc30-...
+  - PUT /api/projects/:id/requirements (one item per category) -> 200; response showed each item with a new UUID and position:0.
+  - PUT /api/projects/:id/design with 2 nodes (AGENT, DATA) + 1 edge -> 200; roundtripped exactly.
+  - POST /api/projects/:id/artifacts {"kind":"project_plan",...} -> 201 with JSONB roundtripped.
+  - POST /api/projects/:id/artifacts {"kind":"drawio_xml","payload":"<mxfile>...","metadata":{"filename":"test.drawio"}} -> 201.
+  - GET /api/projects/:id -> nested project with requirements (6 categories), design (2 nodes + 1 edge), artifacts (2 entries: project_plan + drawio_xml).
+  - GET /api/projects -> list shows 1 project.
+  - DELETE /api/projects/:id -> 204; subsequent GET /api/projects/:id -> 404.
+  - Cascade verified by the delete: child rows in 4 tables vanished without explicit cleanup (FK ON DELETE CASCADE).
+
+Decisions / patterns:
+  - Schema column for node-side schema text named `node_schema`, not `schema`, to avoid a PostgreSQL keyword/identifier conflict (Postgres parses `schema.` as a schema qualifier in some contexts). Wire shape still uses `schema` via mapping.
+  - client_node_id / client_edge_id stored as TEXT, not UUID. The SPA generates ad-hoc string ids like `n-${Date.now()}-${rand}` (see DesignView.handleAddNode) — coercing to UUID would break round-trips of legacy clients and complicate the API contract. The (project_id, client_node_id) UNIQUE is the integrity guarantee.
+  - Edge source/target stored as TEXT references to client_node_id (not FK references to design_nodes(id)). Reason: replace-strategy on PUT design wipes nodes then inserts; FKs would force ordering. The SPA's own consistency rules ensure source/target match a current node.
+  - All routes use parameterized queries. Updates compose SET clauses dynamically by index ($1, $2, ...) — no string concat of user input.
+  - `validate()` middleware narrows the request part using zod's safeParse and replaces the request body with the parsed value, so downstream handlers see coerced data (e.g., defaults applied for empty requirement arrays).
+  - withTransaction() helper centralizes BEGIN/COMMIT/ROLLBACK; both requirements and design PUT routes use it.
+
+Out of scope (not pursued):
+  - Authentication. The API is open within the docker network. The frontend currently calls it via CORS from localhost:8080. Production deployment would need an auth layer.
+  - Optimistic concurrency. Replace-strategy on PUT design/requirements works for the single-user scenario but is not race-safe.
+  - File-uploaded asset storage (from StartPage's "Context Assets" upload). The text is analyzed via Gemini at upload time and never persisted as a raw asset.
+  - Migration rollback path tested. `npm run migrate:down` exists in package.json but was not exercised in this iteration.
+  - Built Docker images of the api service. The cl-api container was not run via docker compose in this iteration (the API was run on the host against the dockerized DB to keep verification fast). `docker compose config` validates the YAML; an end-to-end container run is a fast follow-up.
+
+

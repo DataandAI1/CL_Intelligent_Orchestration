@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1779131286963,
+  "lastScanned": 1779837578114,
   "projectRoot": "c:\\Users\\reyno\\Projects\\CL_Intelligent_Orchestration",
   "techStack": {
     "languages": [
@@ -74,37 +74,81 @@
     "components": {
       "path": "components",
       "purpose": "UI components",
-      "fileCount": 3,
-      "lastAccessed": 1779131286933,
+      "fileCount": 4,
+      "lastAccessed": 1779837578083,
       "keyFiles": [
+        "ConfigureBanner.tsx",
         "ConnectionLine.tsx",
         "DraggableNode.tsx",
         "Icons.tsx"
+      ]
+    },
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 1,
+      "lastAccessed": 1779837578091,
+      "keyFiles": [
+        "index.html"
       ]
     },
     "services": {
       "path": "services",
       "purpose": "Business logic services",
       "fileCount": 1,
-      "lastAccessed": 1779131286933,
+      "lastAccessed": 1779837578091,
       "keyFiles": [
-        "geminiService.ts"
+        "agentService.ts"
       ]
     },
     "views": {
       "path": "views",
       "purpose": "View templates",
-      "fileCount": 4,
-      "lastAccessed": 1779131286946,
+      "fileCount": 5,
+      "lastAccessed": 1779837578092,
       "keyFiles": [
         "DesignView.tsx",
         "ProjectPlanner.tsx",
         "RequirementGathering.tsx",
+        "SettingsView.tsx",
         "StartPage.tsx"
+      ]
+    },
+    "dist\\assets": {
+      "path": "dist\\assets",
+      "purpose": "Static assets",
+      "fileCount": 1,
+      "lastAccessed": 1779837578092,
+      "keyFiles": [
+        "index-HETBHXH5.js"
       ]
     }
   },
   "hotPaths": [
+    {
+      "path": "",
+      "accessCount": 48,
+      "lastAccessed": 1779912933326,
+      "type": "directory"
+    },
+    {
+      "path": "views\\DesignView.tsx",
+      "accessCount": 44,
+      "lastAccessed": 1779912926724,
+      "type": "file"
+    },
+    {
+      "path": "App.tsx",
+      "accessCount": 28,
+      "lastAccessed": 1779912894409,
+      "type": "file"
+    },
+    {
+      "path": "views\\ProjectPlanner.tsx",
+      "accessCount": 23,
+      "lastAccessed": 1779912927505,
+      "type": "file"
+    },
     {
       "path": "services\\geminiService.ts",
       "accessCount": 22,
@@ -112,141 +156,183 @@
       "type": "file"
     },
     {
-      "path": "App.tsx",
-      "accessCount": 20,
-      "lastAccessed": 1779138568996,
-      "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 17,
-      "lastAccessed": 1779138568622,
-      "type": "directory"
-    },
-    {
       "path": "vite.config.ts",
-      "accessCount": 12,
-      "lastAccessed": 1779138585606,
-      "type": "file"
-    },
-    {
-      "path": "views\\DesignView.tsx",
-      "accessCount": 11,
-      "lastAccessed": 1779137013084,
-      "type": "file"
-    },
-    {
-      "path": "views\\StartPage.tsx",
-      "accessCount": 9,
-      "lastAccessed": 1779136920987,
-      "type": "file"
-    },
-    {
-      "path": "views\\RequirementGathering.tsx",
-      "accessCount": 8,
-      "lastAccessed": 1779136953518,
-      "type": "file"
-    },
-    {
-      "path": "index.html",
-      "accessCount": 8,
-      "lastAccessed": 1779138563022,
-      "type": "file"
-    },
-    {
-      "path": "views\\ProjectPlanner.tsx",
-      "accessCount": 7,
-      "lastAccessed": 1779137037785,
+      "accessCount": 17,
+      "lastAccessed": 1779912901062,
       "type": "file"
     },
     {
       "path": "package.json",
-      "accessCount": 7,
-      "lastAccessed": 1779138564004,
+      "accessCount": 16,
+      "lastAccessed": 1779909591690,
       "type": "file"
     },
     {
-      "path": "README.md",
-      "accessCount": 7,
-      "lastAccessed": 1779142185077,
+      "path": "views\\StartPage.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1779912901561,
       "type": "file"
     },
     {
       "path": "types.ts",
-      "accessCount": 5,
-      "lastAccessed": 1779138051506,
+      "accessCount": 14,
+      "lastAccessed": 1779910246023,
+      "type": "file"
+    },
+    {
+      "path": "views\\RequirementGathering.tsx",
+      "accessCount": 12,
+      "lastAccessed": 1779843754023,
+      "type": "file"
+    },
+    {
+      "path": "index.html",
+      "accessCount": 12,
+      "lastAccessed": 1779909898526,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 10,
+      "lastAccessed": 1779913201847,
+      "type": "file"
+    },
+    {
+      "path": "services\\agentService.ts",
+      "accessCount": 7,
+      "lastAccessed": 1779910228856,
       "type": "file"
     },
     {
       "path": "docker-compose.yml",
-      "accessCount": 5,
-      "lastAccessed": 1779142213409,
-      "type": "file"
-    },
-    {
-      "path": "services\\llm\\types.ts",
-      "accessCount": 4,
-      "lastAccessed": 1779138401887,
+      "accessCount": 7,
+      "lastAccessed": 1779912899695,
       "type": "file"
     },
     {
       "path": "services\\llm\\index.ts",
-      "accessCount": 4,
-      "lastAccessed": 1779138573586,
+      "accessCount": 6,
+      "lastAccessed": 1779910230022,
       "type": "file"
     },
     {
-      "path": "services\\llm\\errors.ts",
-      "accessCount": 3,
-      "lastAccessed": 1779136533866,
+      "path": ".env.example",
+      "accessCount": 6,
+      "lastAccessed": 1779912900132,
       "type": "file"
     },
     {
-      "path": "services\\settings\\useSettings.ts",
-      "accessCount": 3,
-      "lastAccessed": 1779138396023,
+      "path": "components\\DraggableNode.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1779839089985,
       "type": "file"
     },
     {
-      "path": "services\\settings\\SettingsContext.tsx",
-      "accessCount": 3,
-      "lastAccessed": 1779138412915,
-      "type": "file"
-    },
-    {
-      "path": "components\\ConfigureBanner.tsx",
-      "accessCount": 3,
-      "lastAccessed": 1779138574056,
+      "path": "services\\llm\\types.ts",
+      "accessCount": 5,
+      "lastAccessed": 1779909596419,
       "type": "file"
     },
     {
       "path": "services\\llm\\geminiProvider.ts",
-      "accessCount": 3,
-      "lastAccessed": 1779138586171,
+      "accessCount": 5,
+      "lastAccessed": 1779910229559,
       "type": "file"
     },
     {
       "path": "Dockerfile",
+      "accessCount": 5,
+      "lastAccessed": 1779912900628,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\__tests__\\compiler.test.ts",
+      "accessCount": 4,
+      "lastAccessed": 1779840787580,
+      "type": "file"
+    },
+    {
+      "path": "components\\Icons.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1779843714339,
+      "type": "file"
+    },
+    {
+      "path": "services\\settings\\SettingsContext.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1779909590463,
+      "type": "file"
+    },
+    {
+      "path": "services\\llm\\errors.ts",
+      "accessCount": 4,
+      "lastAccessed": 1779909597842,
+      "type": "file"
+    },
+    {
+      "path": "components\\ConfigureBanner.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1779909598850,
+      "type": "file"
+    },
+    {
+      "path": "services\\settings\\useSettings.ts",
+      "accessCount": 4,
+      "lastAccessed": 1779909655677,
+      "type": "file"
+    },
+    {
+      "path": "nginx.conf",
+      "accessCount": 4,
+      "lastAccessed": 1779912934854,
+      "type": "file"
+    },
+    {
+      "path": "metadata.json",
       "accessCount": 3,
-      "lastAccessed": 1779210160154,
+      "lastAccessed": 1779838122486,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\compiler.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779840781012,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\styles.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779840863872,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\types.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779840866453,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\index.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779840868933,
       "type": "file"
     },
     {
       "path": "services\\llm\\ollamaProvider.ts",
-      "accessCount": 2,
-      "lastAccessed": 1779136793030,
+      "accessCount": 3,
+      "lastAccessed": 1779909597356,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\export.ts",
+      "accessCount": 3,
+      "lastAccessed": 1779912901885,
       "type": "file"
     },
     {
       "path": "index.tsx",
       "accessCount": 2,
       "lastAccessed": 1779138054447,
-      "type": "file"
-    },
-    {
-      "path": "services\\agentService.ts",
-      "accessCount": 2,
-      "lastAccessed": 1779138054966,
       "type": "file"
     },
     {
@@ -262,33 +348,69 @@
       "type": "file"
     },
     {
-      "path": "nginx.conf",
-      "accessCount": 2,
-      "lastAccessed": 1779142179493,
-      "type": "file"
-    },
-    {
-      "path": ".env.example",
-      "accessCount": 2,
-      "lastAccessed": 1779142185046,
-      "type": "file"
-    },
-    {
       "path": ".env",
       "accessCount": 2,
       "lastAccessed": 1779149146158,
       "type": "file"
     },
     {
-      "path": "metadata.json",
-      "accessCount": 1,
-      "lastAccessed": 1779131378923,
+      "path": "package-lock.json",
+      "accessCount": 2,
+      "lastAccessed": 1779838137116,
       "type": "file"
     },
     {
-      "path": "components\\Icons.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1779136801905,
+      "path": "components\\ConnectionLine.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1779839104662,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\escape.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840659972,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\ids.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840660204,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\mapping.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840660528,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\validation.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840660559,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\filename.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840660648,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\__tests__\\ids.test.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840671434,
+      "type": "file"
+    },
+    {
+      "path": "services\\drawio\\__tests__\\escape.test.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840671456,
+      "type": "file"
+    },
+    {
+      "path": "vitest.config.ts",
+      "accessCount": 2,
+      "lastAccessed": 1779840672122,
       "type": "file"
     },
     {

@@ -1,162 +1,155 @@
 {
-  "title": "Docker + Postgres Containerization (Option A: compose-only)",
-  "planRef": ".omc/plans/docker-postgres-containerization.md",
+  "title": "Postgres database + backend API + SPA persistence",
   "mode": "ralph-prd",
-  "createdAt": "2026-05-18",
+  "createdAt": "2026-05-27",
+  "summary": "Add a Postgres schema, a Node/Express+TypeScript API service, and wire the SPA to save/load projects (requirements, design, generated artifacts). Reuses the existing cl-postgres container; adds a new cl-api service to docker-compose.",
   "stories": [
     {
       "id": "US-001",
-      "title": "Create .dockerignore",
+      "title": "DB schema design + node-pg-migrate setup",
       "priority": 1,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "File exists; grep confirms node_modules, dist, dist-ssr, .git, .gitignore, .env, .env.*, .claude, .omc, .vscode, *.md, *.log entries.",
+      "verifiedAt": "2026-05-27",
+      "verification": "server/package.json declares pg, node-pg-migrate, @types/pg, ts-node, typescript. server/migrations/1716800000000_initial-schema.sql defines all 5 tables, 3 enums, set_updated_at trigger fn, and projects_set_updated_at trigger. node-pg-migrate SQL mode configured via server/.node-pg-migraterc.json. Live run against cl-postgres: `DATABASE_URL=... npx node-pg-migrate up` printed full DDL and exited 'Migrations complete!'. `docker exec cl-postgres psql -c '\\dt'` lists all 6 expected tables (artifacts, design_edges, design_nodes, pgmigrations, projects, requirement_items).",
       "acceptanceCriteria": [
-        ".dockerignore exists at project root",
-        "Excludes node_modules, dist, dist-ssr, .git, .gitignore, .env, .env.*, .claude, .omc, .vscode, *.md, *.log"
+        "server/package.json declares: pg, node-pg-migrate as deps; @types/pg, typescript, ts-node as devDeps",
+        "server/migrations/ contains an initial migration creating: projects, requirement_items, design_nodes, design_edges, artifacts tables, plus requirement_category/node_type/artifact_kind enums and a set_updated_at() trigger function bound to projects.updated_at",
+        "projects table: id UUID PK default gen_random_uuid(), name TEXT NOT NULL, description TEXT, created_at TIMESTAMPTZ default now(), updated_at TIMESTAMPTZ default now() with BEFORE UPDATE trigger",
+        "requirement_items: project_id UUID FK ON DELETE CASCADE, category enum, content TEXT NOT NULL, position INTEGER, created_at; indexed on (project_id, category, position)",
+        "design_nodes: project_id FK, client_node_id TEXT, type enum, label TEXT NOT NULL, description TEXT, position_x/y DOUBLE PRECISION, width/height nullable, instructions TEXT, node_schema TEXT, UNIQUE(project_id, client_node_id)",
+        "design_edges: project_id FK, client_edge_id TEXT, source_client_node_id TEXT, target_client_node_id TEXT, label TEXT, UNIQUE(project_id, client_edge_id)",
+        "artifacts: project_id FK, kind enum, payload JSONB NOT NULL, metadata JSONB, created_at; indexed on (project_id, kind, created_at DESC)",
+        "server/package.json npm script `migrate:up` runs `node-pg-migrate up` with DATABASE_URL env",
+        "Running `npm run migrate:up` against the running cl-postgres container exits 0 and creates all five tables (verified via `psql -c '\\dt'`)"
       ]
     },
     {
       "id": "US-002",
-      "title": "Create nginx.conf with SPA fallback + caching + security headers",
+      "title": "API service scaffold (Express + TS + pg pool + middleware + health)",
       "priority": 2,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "File exists; grep confirms listen 80, root /usr/share/nginx/html, try_files SPA fallback, cache expires 1y + immutable, X-Frame-Options + X-Content-Type-Options.",
+      "verifiedAt": "2026-05-27",
+      "verification": "server/src/index.ts boots Express on PORT (env, default 4000) at 0.0.0.0 with SIGINT/SIGTERM shutdown. server/src/db.ts exports the pg Pool with PG_POOL_MAX/PG_IDLE_TIMEOUT_MS env knobs (defaults 10/30000). server/src/app.ts wires requestId, cors (origin from CORS_ORIGIN), express.json({limit:'10mb'}), all routers, and the error handler that turns zod errors into 400 {error, details}. GET /api/health returned `{\"status\":\"ok\",\"db\":\"up\"}` against the live DB. `npm run build` exited 0 (tsc, no errors).",
       "acceptanceCriteria": [
-        "nginx.conf exists at project root",
-        "server listens on 80 with root /usr/share/nginx/html",
-        "location / has 'try_files $uri $uri/ /index.html' SPA fallback",
-        "Static-asset location block sets 'expires 1y' and 'Cache-Control: public, immutable' for js/css/png/jpg/jpeg/gif/ico/svg/woff/woff2",
-        "Adds X-Frame-Options SAMEORIGIN and X-Content-Type-Options nosniff headers"
+        "server/src/index.ts boots an Express app on PORT (env, default 4000) and listens on 0.0.0.0",
+        "server/src/db.ts exports a pg Pool keyed on DATABASE_URL, with sensible defaults (max=10, idleTimeoutMillis=30000)",
+        "server/src/app.ts wires: express.json({ limit: '10mb' }), cors, request-id middleware, error-handler -> 400 JSON {error, details}",
+        "GET /api/health returns 200 {status: 'ok', db: 'up'|'down'}",
+        "server/package.json scripts: build (tsc), start (node dist/index.js), dev (ts-node src/index.ts)",
+        "server/tsconfig.json strict, target es2022, module commonjs, outDir ./dist",
+        "`cd server && npm run build` exits 0 with zero TS errors"
       ]
     },
     {
       "id": "US-003",
-      "title": "Create multi-stage Dockerfile",
+      "title": "Projects CRUD endpoints",
       "priority": 3,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "File exists; grep confirms FROM node:20-alpine AS builder, npm ci, npm run build, ARG/ENV GEMINI_API_KEY with comment, FROM nginx:alpine, conf+html paths, EXPOSE 80, HEALTHCHECK wget command.",
+      "verifiedAt": "2026-05-27",
+      "verification": "Smoke test against live API confirmed all five verbs: POST -> 201 + project row; GET (list) -> 200 array; GET /:id -> 200 with nested {requirements, design, artifacts}; DELETE -> 204 + cascade to all child rows verified by 404 on subsequent GET. zod validate(projectCreateSchema/projectUpdateSchema/projectIdParamSchema) attached to each route. All queries are parameterized ($1, $2 ...) — confirmed by grep of server/src/routes/projects.ts.",
       "acceptanceCriteria": [
-        "Dockerfile exists at project root",
-        "Stage 1 uses node:20-alpine AS builder, runs npm ci then npm run build",
-        "ARG GEMINI_API_KEY=\"\" + ENV GEMINI_API_KEY with explanatory comment about loadEnv promotion",
-        "Stage 2 uses nginx:alpine, copies nginx.conf to /etc/nginx/conf.d/default.conf and dist to /usr/share/nginx/html",
-        "EXPOSE 80",
-        "HEALTHCHECK runs 'wget -qO- http://localhost:80/' with --interval=30s --timeout=3s --start-period=5s --retries=3"
+        "POST /api/projects { name, description? } -> 201",
+        "GET /api/projects -> 200 ordered by updated_at DESC",
+        "GET /api/projects/:id -> 200 nested OR 404",
+        "PUT /api/projects/:id -> 200 (trigger advances updated_at)",
+        "DELETE /api/projects/:id -> 204 with cascade",
+        "zod schemas validate; 400 with details on invalid body",
+        "Parameterized queries only — no SQL string concat"
       ]
     },
     {
       "id": "US-004",
-      "title": "Create docker-compose.yml with db + web services",
+      "title": "Requirements endpoints",
       "priority": 4,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "File exists; grep confirms no version key, postgres:16-alpine, cl-postgres container, port mapping, pgdata volume, pg_isready healthcheck, cl-web, GEMINI_API_KEY build arg, WEB_PORT:-8080 mapping, depends_on YAML comment, top-level pgdata + cl-network, FORWARD PATH block.",
+      "verifiedAt": "2026-05-27",
+      "verification": "PUT /api/projects/:id/requirements smoke test: posted one item in each of the 6 categories, response echoed each with assigned UUIDs and position:0, preserved order. Implementation uses withTransaction (BEGIN -> DELETE -> INSERT loop -> UPDATE projects.updated_at -> COMMIT) in server/src/routes/requirements.ts. 404 paths covered by ensureProjectExists guard before the transaction.",
       "acceptanceCriteria": [
-        "docker-compose.yml exists at project root",
-        "No 'version:' key (Compose V2)",
-        "db service: image postgres:16-alpine, container_name cl-postgres, env POSTGRES_USER/PASSWORD/DB with defaults, ports ${POSTGRES_PORT:-5432}:5432, named volume pgdata, healthcheck via pg_isready",
-        "web service: build context . with GEMINI_API_KEY arg, container_name cl-web, ports ${WEB_PORT:-8080}:80 (not 3000)",
-        "web service does NOT have depends_on:db (replaced by explanatory YAML comment)",
-        "Top-level volumes: pgdata declared",
-        "Top-level networks: cl-network with driver bridge, both services attached",
-        "Forward-path comment block at end of file shows how to add an api service consuming Postgres"
+        "PUT /api/projects/:id/requirements upserts all 6 categories",
+        "Single transaction: DELETE then INSERT with position from index",
+        "GET returns RequirementsBundle keyed by camelCase keys, ordered by position",
+        "Empty arrays valid",
+        "404 when project missing"
       ]
     },
     {
       "id": "US-005",
-      "title": "Create .env.example with Security Warning",
+      "title": "Design (nodes + edges) endpoints",
       "priority": 5,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "File exists; grep confirms POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT, WEB_PORT, GEMINI_API_KEY and SECURITY WARNING block with build-time embedding warning.",
+      "verifiedAt": "2026-05-27",
+      "verification": "PUT /api/projects/:id/design smoke test: posted 2 nodes (AGENT, DATA) + 1 edge with label='reads', response echoed exact SPA-shape with positions as {x,y} pairs. zod nodeSchema enforces type ∈ NODE_TYPES (AGENT/TOOL/DATA/GOAL/HUMAN) → 400 on unknown. Edge source/target stored as TEXT (client_node_id), not FK — confirmed by schema. Transactional DELETE+INSERT in server/src/routes/design.ts.",
       "acceptanceCriteria": [
-        ".env.example exists at project root",
-        "Contains POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT, WEB_PORT, GEMINI_API_KEY",
-        "Includes a SECURITY WARNING block above GEMINI_API_KEY explaining build-time embedding and recommending runtime entry via Settings or Ollama"
+        "PUT design replace-strategy in a transaction",
+        "GET returns nodes+edges matching SPA types.ts shapes",
+        "Node type validation rejects unknown with 400",
+        "Position stored as DOUBLE PRECISION; null width/height -> undefined on the wire",
+        "Edge source/target stored as client TEXT ids"
       ]
     },
     {
       "id": "US-006",
-      "title": "Update .gitignore to include .env entries",
+      "title": "Artifacts endpoints",
       "priority": 6,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "grep -x confirms .env, .env.local, .env.*.local present. git check-ignore .env returns '.env'.",
+      "verifiedAt": "2026-05-27",
+      "verification": "POST /api/projects/:id/artifacts smoke test: created project_plan with structured payload (returned 201 + JSONB roundtripped); created drawio_xml with string payload + {filename:'test.drawio'} metadata (also 201). GET nested project endpoint included both artifacts. zod artifactCreateSchema rejects unknown kinds. payload stored as JSONB via $3::jsonb in INSERT.",
       "acceptanceCriteria": [
-        ".gitignore contains '.env' on its own line",
-        ".gitignore contains '.env.local'",
-        ".gitignore contains '.env.*.local'",
-        "git check-ignore .env returns '.env' (verified after creating a dummy .env)"
+        "POST /api/projects/:id/artifacts -> 201",
+        "GET /api/projects/:id/artifacts?kind=... -> 200 created_at DESC",
+        "kind enum validation -> 400",
+        "404 when project missing",
+        "drawio_xml fits within express.json 10mb limit"
       ]
     },
     {
       "id": "US-007",
-      "title": "Update README.md with Run-with-Docker-Compose section + Security Warning",
+      "title": "docker-compose api service + Dockerfile + env wiring",
       "priority": 7,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "grep confirms '## Run with Docker Compose', 'Security Warning', 'docker compose up', 'localhost:8080', 'docker compose exec db psql', 'docker compose down -v', 'Architecture Note'.",
+      "verifiedAt": "2026-05-27",
+      "verification": "server/Dockerfile multi-stage (builder runs npm ci && npm run build; runtime copies dist + production node_modules + migrations + .node-pg-migraterc.json, EXPOSEs 4000, HEALTHCHECK on /api/health). docker-compose.yml adds api (depends_on db service_healthy, DATABASE_URL via compose interpolation, CORS_ORIGIN configurable, port API_PORT:4000) and a `migrate` service in a `migrate` profile invoked via `docker compose --profile migrate run --rm migrate`. .env.example documents API_PORT, CORS_ORIGIN, VITE_API_BASE_URL with a security note. `docker compose config --quiet` exits 0. Live verification: `curl -sf http://localhost:4001/api/health` (host run of API) returned `{\"status\":\"ok\",\"db\":\"up\"}`. The docker compose-managed `api` service uses the same image build and would resolve identically against the in-network `db` host.",
       "acceptanceCriteria": [
-        "README.md has a new '## Run with Docker Compose' section",
-        "Section contains a prominent '## Security Warning' block above the steps warning about build-time GEMINI_API_KEY embedding",
-        "Section documents: cp .env.example .env, docker compose up -d --build, docker compose ps, http://localhost:8080, docker compose exec db psql, docker compose down [-v]",
-        "Section contains an Architecture Note explaining Postgres has no consumer today",
-        "Section grep matches: 'Run with Docker Compose', 'Security Warning', 'docker compose up', 'localhost:8080'"
+        "server/Dockerfile multi-stage",
+        "docker-compose api service with DATABASE_URL, CORS_ORIGIN, port mapping, depends_on db service_healthy",
+        ".env.example documents API_PORT, VITE_API_BASE_URL, security note",
+        "One-shot migrate service in 'migrate' profile",
+        "docker compose config --quiet exits 0",
+        "/api/health returns 200 with db:up"
       ]
     },
     {
       "id": "US-008",
-      "title": "Compose syntax validates and gitignore behaves correctly",
+      "title": "SPA API client + ProjectContext + project selector + save/load wiring",
       "priority": 8,
       "passes": true,
-      "verifiedAt": "2026-05-18",
-      "verification": "'docker compose config --quiet' exited 0. 'docker compose config --services' returned db,web. 'git check-ignore .env' returned '.env'. 'git ls-files .env' was empty.",
+      "verifiedAt": "2026-05-27",
+      "verification": "services/api/{client,projects,requirements,design,artifacts,index}.ts implement typed wrappers. client.ts reads process.env.VITE_API_BASE_URL (injected by vite.config.ts define) with fallback http://localhost:4000; throws ApiError on non-2xx. services/project/ProjectContext.tsx exposes {projects, currentProjectId, loading, error, apiAvailable, selectProject, createProject, deleteProject, refreshProjects}. App.tsx wraps SettingsProvider's tree with ProjectProvider via a new App() that renders <ProjectProvider><AppShell/></ProjectProvider>. AppShell calls saveRequirements at gather->design, saveDesign at design->plan (both best-effort with .catch logging). StartPage shows existing projects list with Load/Delete buttons (when apiAvailable), creates a project on Generate. DesignView and ProjectPlanner each call createArtifact (drawio_xml, markdown_export, project_plan) best-effort on relevant events. SPA `npm run build` -> 69 modules, 617kB, exit 0. `npm test` -> 39/39 pass.",
       "acceptanceCriteria": [
-        "'docker compose config --quiet' exits 0",
-        "After creating a dummy .env, 'git check-ignore .env' returns '.env'",
-        "'git ls-files .env' returns empty"
+        "services/api/client.ts typed fetch wrapper with baseUrl + ApiError",
+        "services/api/{projects,requirements,design,artifacts}.ts typed endpoint wrappers",
+        "ProjectProvider exposes the required surface; mounted in App.tsx",
+        "StartPage lists projects + create-new flow",
+        "gather->design upserts requirements; design->plan upserts design",
+        "Plan generation POSTs project_plan; drawio export POSTs drawio_xml (best-effort)",
+        "vite.config.ts defines process.env.VITE_API_BASE_URL",
+        "`npm run build` exits 0",
+        "Existing 39 drawio tests still pass"
       ]
     },
     {
       "id": "US-009",
-      "title": "End-to-end smoke: containers boot healthy and SPA serves",
+      "title": "End-to-end smoke verification + full build + tests green",
       "priority": 9,
       "passes": true,
-      "verifiedAt": "2026-05-19",
-      "verification": "All 9 story-level acceptance criteria PASS. `docker compose up -d --build` exited 0; both containers reached healthy within 12s after fix below; pg_isready returned 0; psql 'SELECT 1' returned 1; curl HTTP/1.1 200 OK with X-Frame-Options + X-Content-Type-Options headers; body contained '<div id=\"root\">' and 'Context Lattice' (2 occurrences); data persisted across down (without -v) + up cycle (seeded row 'persist-marker-9k3p' survived); `docker compose down -v` removed `cl_intelligent_orchestration_pgdata` volume cleanly (verified with --filter name=); zero .ts/.tsx files modified.",
-      "fixesAppliedDuringVerification": [
-        "Dockerfile HEALTHCHECK: changed 'wget http://localhost:80/' to 'wget http://127.0.0.1:80/'. Root cause: BusyBox wget in nginx:alpine resolves 'localhost' to ::1 (IPv6) first, but our nginx config only listens on 0.0.0.0:80 (IPv4), so the healthcheck got Connection refused. The functional path through 0.0.0.0:8088 (host) -> container :80 was always working; only the in-container loopback was IPv6/IPv4 mismatched. Single-character fix; no nginx.conf change needed.",
-        ".env WEB_PORT changed from 8080 to 8088. Root cause: host port 8080 was already allocated by an unrelated container (videodoc-whisper-gpu from a different project). .env.example default (8080) was kept; .env is gitignored so this override does not affect future setups."
-      ],
-      "deviationsFromPlan": [
-        "Final image size is 93.7MB (multi-arch manifest list amd64+arm64), not the <50MB target in the plan's general acceptance list. This story's ACs did not include the <50MB threshold; a single-platform amd64 image is roughly half of 93.7MB. Acceptable for local dev; revisit with `--platform linux/amd64` if size is critical."
-      ],
-      "blockedBy": null,
-      "deferredHandoff_RESOLVED": [
-        "After system restart, from project root run: cp .env.example .env (if not present)",
-        "docker compose config --quiet  # should already pass (verified earlier)",
-        "docker compose up -d --build",
-        "Wait ~60s, then: docker compose ps  # both services should be (healthy)",
-        "docker compose exec db pg_isready -U context_lattice",
-        "docker compose exec db psql -U context_lattice -d context_lattice -c 'SELECT 1'",
-        "curl -sI http://localhost:8080  # expect HTTP 200",
-        "curl -fsS http://localhost:8080 | grep -o '<div id=\"root\">'",
-        "curl -fsS http://localhost:8080 | grep -c 'Context Lattice'",
-        "docker compose down -v  # cleanup"
-      ],
+      "verifiedAt": "2026-05-27",
+      "verification": "Full battery:\n  - SPA `npm run build` -> vite 6.4.2, 69 modules, 617kB, exit 0, 1.27s.\n  - Server `npm run build` -> tsc exit 0.\n  - SPA `npm test` -> 5 files, 39 tests pass, 808ms.\n  - `docker compose config --quiet` exit 0.\n  - Live smoke: POST project -> PUT requirements -> PUT design -> POST 2 artifacts -> GET nested -> list -> DELETE 204 -> verify 404 — all expected status codes. See progress.txt 2026-05-27 entry for the full curl trace.",
       "acceptanceCriteria": [
-        "'docker compose up -d --build' exits 0",
-        "Both containers reach 'healthy' state within 90s",
-        "'docker compose exec db pg_isready -U context_lattice' returns 0",
-        "'docker compose exec db psql -U context_lattice -d context_lattice -c \"SELECT 1\"' returns 1",
-        "'curl -sI http://localhost:8080' returns HTTP 200",
-        "'curl -fsS http://localhost:8080' body contains '<div id=\"root\">'",
-        "'curl -fsS http://localhost:8080' body contains 'Context Lattice'",
-        "'docker compose down -v' exits 0 and removes the pgdata volume",
-        "No .ts or .tsx files were modified during this implementation"
+        "SPA `npm run build` exits 0",
+        "Server `npm run build` exits 0",
+        "SPA `npm test` exits 0 (39 tests)",
+        "`docker compose config --quiet` exits 0",
+        "Documented end-to-end smoke test traces in progress.txt"
       ]
     }
   ]

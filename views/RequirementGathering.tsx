@@ -133,12 +133,12 @@ export const RequirementGathering: React.FC<Props> = ({ requirements, setRequire
             {checkingHealth ? (
                 <>
                     <div className="w-4 h-4 border-2 border-[#D4B980]/30 border-t-[#D4B980] rounded-full animate-spin"></div>
-                    <span>Analysing Lattice...</span>
+                    <span>Analysing System...</span>
                 </>
             ) : (
                 <>
                     <span className="text-lg">🩺</span> 
-                    <span>Check Lattice Health</span>
+                    <span>Check System Health</span>
                 </>
             )}
           </button>
@@ -241,7 +241,7 @@ export const RequirementGathering: React.FC<Props> = ({ requirements, setRequire
                              <NodeIcon type="SYSTEM" className="w-6 h-6" />
                           </div>
                           <div>
-                              <h3 className="text-xl font-bold text-white">Lattice Intelligence</h3>
+                              <h3 className="text-xl font-bold text-white">System Intelligence</h3>
                               <p className="text-[#808080] text-sm">Enhancing: <span className="text-[#D4B980] capitalize">{categories.find(c => c.key === brainstorm.category)?.label}</span></p>
                           </div>
                       </div>

@@ -7,12 +7,15 @@ import { StartPage } from './views/StartPage';
 import { SettingsView } from './views/SettingsView';
 import { ProjectRequirements, NodeData, Edge } from './types';
 import { SettingsProvider } from './services/settings/SettingsContext';
+import { ProjectProvider, useProjectContext } from './services/project/ProjectContext';
+import { saveRequirements } from './services/api/requirements';
+import { saveDesign } from './services/api/design';
 
-// Context Lattice Logo Component
+// Agentic System Builder Logo Component
 const Logo = ({ size = "w-10 h-10" }: { size?: string }) => (
   <div className={`${size} relative flex items-center justify-center`}>
      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full filter drop-shadow-lg">
-        {/* Abstract Lattice Structure */}
+        {/* Abstract System Structure */}
         <path d="M20 2L35.5885 11V29L20 38L4.41154 29V11L20 2Z" stroke="#D4B980" strokeWidth="1.5" fill="rgba(26, 63, 92, 0.2)" />
         <path d="M20 2V20M20 38V20M4.41154 11L20 20M35.5885 11L20 20M4.41154 29L20 20M35.5885 29L20 20" stroke="#2A5F8C" strokeWidth="1" strokeOpacity="0.8"/>
         <circle cx="20" cy="20" r="3" fill="#D4B980" />
@@ -26,9 +29,11 @@ const Logo = ({ size = "w-10 h-10" }: { size?: string }) => (
   </div>
 );
 
-const App: React.FC = () => {
+const AppShell: React.FC = () => {
+  const { currentProjectId } = useProjectContext();
+
   const [step, setStep] = useState<'start' | 'gather' | 'design' | 'plan' | 'settings'>('start');
-  
+
   const [requirements, setRequirements] = useState<ProjectRequirements>({
     goals: [],
     processes: [],
@@ -46,10 +51,30 @@ const App: React.FC = () => {
     setStep('gather');
   };
 
+  // Best-effort persistence — failures are logged but never block navigation.
+  const persistRequirements = async () => {
+    if (!currentProjectId) return;
+    try {
+      await saveRequirements(currentProjectId, requirements);
+    } catch (err) {
+      console.warn('[App] saveRequirements failed (non-blocking):', err);
+    }
+  };
+
+  const handleGatherNext = () => {
+    persistRequirements();
+    setStep('design');
+  };
+
   const handleDesignComplete = (finalNodes: NodeData[], finalEdges: Edge[]) => {
-      setNodes(finalNodes);
-      setEdges(finalEdges);
-      setStep('plan');
+    setNodes(finalNodes);
+    setEdges(finalEdges);
+    if (currentProjectId) {
+      saveDesign(currentProjectId, finalNodes, finalEdges).catch((err) => {
+        console.warn('[App] saveDesign failed (non-blocking):', err);
+      });
+    }
+    setStep('plan');
   };
 
   const NavItem = ({ id, num, label }: { id: typeof step, num: string, label: string }) => (
@@ -85,7 +110,7 @@ const App: React.FC = () => {
             >
                 <Logo />
                 <div className="flex flex-col">
-                    <span className="font-bold text-lg tracking-tight leading-none text-white font-display">CONTEXT LATTICE</span>
+                    <span className="font-bold text-lg tracking-tight leading-none text-white font-display">AGENTIC SYSTEM BUILDER</span>
                     <span className="text-[10px] text-[#D4B980] tracking-[0.2em] uppercase mt-0.5">Intelligent Orchestration</span>
                 </div>
             </div>
@@ -116,10 +141,10 @@ const App: React.FC = () => {
           <main className="flex-1 overflow-hidden relative">
             {step === 'gather' && (
               <div className="h-full overflow-y-auto bg-[#1A1A1A]">
-                <RequirementGathering 
-                  requirements={requirements} 
-                  setRequirements={setRequirements} 
-                  onNext={() => setStep('design')} 
+                <RequirementGathering
+                  requirements={requirements}
+                  setRequirements={setRequirements}
+                  onNext={handleGatherNext}
                 />
               </div>
             )}
@@ -149,5 +174,11 @@ const App: React.FC = () => {
     </SettingsProvider>
   );
 };
+
+const App: React.FC = () => (
+  <ProjectProvider>
+    <AppShell />
+  </ProjectProvider>
+);
 
 export default App;

@@ -4,9 +4,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+
 ARG GEMINI_API_KEY=""
 ENV GEMINI_API_KEY=${GEMINI_API_KEY}
-# Promote ARG to ENV so Vite's loadEnv() picks it up during 'npm run build'.
+
+ARG VITE_API_BASE_URL=""
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Promote ARGs to ENV so Vite's loadEnv() picks them up during 'npm run build'.
 RUN npm run build
 
 # Stage 2: Serve

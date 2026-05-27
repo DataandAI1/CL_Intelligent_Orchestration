@@ -561,6 +561,7 @@ export const generateProjectPlan = async (
             role: { type: "string" },
             allocation: { type: "string" },
           },
+          required: ["name", "type", "role", "allocation"],
         },
       },
       phases: {
@@ -586,9 +587,18 @@ export const generateProjectPlan = async (
                   },
                   estimatedHours: { type: "number" },
                 },
+                required: [
+                  "id",
+                  "title",
+                  "description",
+                  "assignee",
+                  "complexity",
+                  "estimatedHours",
+                ],
               },
             },
           },
+          required: ["id", "title", "duration", "tasks"],
         },
       },
       risks: {
@@ -603,9 +613,18 @@ export const generateProjectPlan = async (
             },
             mitigation: { type: "string" },
           },
+          required: ["risk", "severity", "mitigation"],
         },
       },
     },
+    required: [
+      "executiveSummary",
+      "totalEstimatedDuration",
+      "totalEstimatedEffortHours",
+      "resources",
+      "phases",
+      "risks",
+    ],
   };
 
   try {
@@ -616,7 +635,7 @@ export const generateProjectPlan = async (
     return parsed;
   } catch (error) {
     console.error("Error generating project plan:", error);
-    return null;
+    throw error;
   }
 };
 

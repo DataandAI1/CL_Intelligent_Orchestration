@@ -4,9 +4,12 @@ import { ProjectRequirements, NodeData, Edge, NodeType, AgentDesignResponse, Arc
 import { generateArchitecture, simulateAgentRun, optimizeArchitecture, compareOrchestrationPatterns } from '../services/agentService';
 import { DraggableNode } from '../components/DraggableNode';
 import { ConnectionLine } from '../components/ConnectionLine';
-import { NodeIcon, LatticeIcon, RoadmapIcon, CompareIcon, PlayIcon, TableIcon, GraphIcon, BuildIcon } from '../components/Icons';
+import { NodeIcon, SystemIcon, RoadmapIcon, CompareIcon, PlayIcon, TableIcon, GraphIcon, BuildIcon } from '../components/Icons';
 import { ConfigureBanner } from '../components/ConfigureBanner';
 import { useSettingsContext } from '../services/settings/SettingsContext';
+import { exportDesignToDrawio, safeFilename } from '../services/drawio';
+import { useProjectContext } from '../services/project/ProjectContext';
+import { createArtifact } from '../services/api/artifacts';
 
 interface Props {
   requirements: ProjectRequirements;
@@ -38,6 +41,7 @@ const ORCHESTRATION_PATTERNS = [
 
 export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) => {
   const { isConfigured } = useSettingsContext();
+  const { currentProjectId } = useProjectContext();
   const hasFallbackKey = typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
   const showBanner = !isConfigured && !hasFallbackKey;
 
@@ -252,13 +256,13 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
     const patternName = detectedPattern?.name || "Custom Architecture";
     const patternDesc = detectedPattern?.desc || "No description available.";
 
-    let content = `# Agent Context Lattice Blueprint\n\n`;
+    let content = `# Agentic System Blueprint\n\n`;
     content += `**Project:** ${requirements.projectName}\n`;
     content += `**Generated:** ${new Date().toLocaleDateString()}\n\n`;
     content += `## Orchestration Pattern: ${patternName}\n`;
     content += `> ${patternDesc}\n\n`;
 
-    content += `## Lattice Nodes\n\n`;
+    content += `## System Nodes\n\n`;
     
     nodes.forEach(node => {
         content += `### [${node.type}] ${node.label}\n`;
@@ -276,17 +280,36 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
         }
     });
     
-    content += `\n---\nDesigned with Context Lattice`;
+    content += `\n---\nDesigned with Agentic System Builder`;
+
+    const filename = safeFilename(requirements.projectName, 'md');
+
+    if (currentProjectId) {
+      createArtifact(currentProjectId, 'markdown_export', content, { filename }).catch((err) => {
+        console.warn('[DesignView] failed to persist markdown_export artifact (non-blocking):', err);
+      });
+    }
 
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Agent_Context_Lattice.md';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportDrawio = () => {
+    exportDesignToDrawio(nodes, edges, detectedPattern, requirements, {
+      onXml: (xml, filename) => {
+        if (!currentProjectId) return;
+        createArtifact(currentProjectId, 'drawio_xml', xml, { filename }).catch((err) => {
+          console.warn('[DesignView] failed to persist drawio_xml artifact (non-blocking):', err);
+        });
+      },
+    });
   };
 
   // --- Canvas Interaction Handlers ---
@@ -557,7 +580,7 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
             ) : (
                 <div className="space-y-8">
                     <div>
-                        <h3 className="text-xs font-bold text-[#808080] uppercase tracking-wider mb-4">Lattice Components</h3>
+                        <h3 className="text-xs font-bold text-[#808080] uppercase tracking-wider mb-4">System Components</h3>
                         <div className="grid grid-cols-2 gap-3">
                             {[NodeType.AGENT, NodeType.TOOL, NodeType.DATA, NodeType.GOAL, NodeType.HUMAN].map(type => (
                                 <button
@@ -577,7 +600,7 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
                     <div className="bg-[#2A5F8C]/5 border border-[#2A5F8C]/20 p-5 rounded-xl">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-[#D4B980]">✨</span>
-                            <h3 className="text-xs font-bold text-[#D4B980] uppercase tracking-wider">Lattice Optimizer</h3>
+                            <h3 className="text-xs font-bold text-[#D4B980] uppercase tracking-wider">System Optimizer</h3>
                         </div>
                         <p className="text-xs text-[#B8B8B8] mb-4 leading-relaxed">Analyze the graph for gaps and suggest improvements.</p>
                         <button
@@ -633,12 +656,20 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
         {/* Updated Bottom Navigation Buttons */}
         <div className="p-4 border-t border-[#333333] bg-[#2A2A2A] space-y-3 shrink-0" onMouseUp={(e) => e.stopPropagation()}>
            
-           <button 
-             onClick={handleExport}
-             className="w-full bg-[#333333] hover:bg-[#4A4A4A] text-[#E8E8E8] py-2 px-3 rounded-lg font-bold transition-colors text-[10px] uppercase tracking-wider border border-[#4A4A4A] flex items-center justify-center gap-2"
-           >
-             <span>📄</span> Export Lattice Architecture Plan
-           </button>
+           <div className="flex gap-2">
+             <button
+               onClick={handleExport}
+               className="flex-1 bg-[#333333] hover:bg-[#4A4A4A] text-[#E8E8E8] py-2 px-3 rounded-lg font-bold transition-colors text-[10px] uppercase tracking-wider border border-[#4A4A4A] flex items-center justify-center gap-2"
+             >
+               <span>MD</span> Export Markdown
+             </button>
+             <button
+               onClick={handleExportDrawio}
+               className="flex-1 bg-[#333333] hover:bg-[#4A4A4A] text-[#E8E8E8] py-2 px-3 rounded-lg font-bold transition-colors text-[10px] uppercase tracking-wider border border-[#4A4A4A] flex items-center justify-center gap-2"
+             >
+               <span>DIO</span> Export Draw.io
+             </button>
+           </div>
 
            <button
              onClick={() => setShowSimulator(true)}
@@ -704,10 +735,10 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                         <div className="bg-[#2A2A2A] border border-[#333333] p-8 rounded-2xl max-w-md text-center pointer-events-auto shadow-2xl">
                             <div className="w-16 h-16 bg-[#2A5F8C]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#D4B980] text-3xl">
-                                <LatticeIcon className="w-8 h-8"/>
+                                <SystemIcon className="w-8 h-8"/>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2">
-                                {generationError ? "Generation Failed" : "Empty Lattice"}
+                                {generationError ? "Generation Failed" : "Empty System"}
                             </h3>
                             <p className="text-[#808080] mb-6 text-sm">
                                 {generationError 
@@ -904,13 +935,13 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
           </div>
       )}
 
-      {/* Lattice Optimizer Modal */}
+      {/* System Optimizer Modal */}
       {showOptimizer && (
           <div className="absolute inset-0 z-50 bg-[#000000]/80 backdrop-blur-md flex items-center justify-center p-6" onMouseUp={(e) => e.stopPropagation()}>
                <div className="bg-[#1A1A1A] border border-[#333333] w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
                    <div className="p-6 border-b border-[#333333] flex justify-between items-center bg-[#2A2A2A]">
                        <h2 className="text-xl font-bold text-white flex items-center gap-3">
-                           <span>✨</span> Lattice Optimizer
+                           <span>✨</span> System Optimizer
                        </h2>
                        <button onClick={() => setShowOptimizer(false)} className="text-[#808080] hover:text-white text-xl">✕</button>
                    </div>
@@ -1129,7 +1160,7 @@ export const DesignView: React.FC<Props> = ({ requirements, onBack, onNext }) =>
                                    {/* Score & Summary */}
                                    <div className="lg:col-span-4 bg-[#2A2A2A] border border-[#333333] rounded-xl p-6 flex flex-col justify-between relative overflow-hidden group">
                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                           <LatticeIcon className="w-32 h-32 text-[#D4B980]" />
+                                           <SystemIcon className="w-32 h-32 text-[#D4B980]" />
                                        </div>
                                        <div>
                                            <div className="text-[10px] font-bold text-[#808080] uppercase tracking-wider mb-2">Current Architecture</div>

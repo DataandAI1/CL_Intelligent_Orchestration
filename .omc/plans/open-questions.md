@@ -16,3 +16,10 @@
 - [ ] Is the Tailwind CDN runtime dependency acceptable for containerized deployments, or should Tailwind be installed as a build dependency for offline builds? — The current setup requires the user's browser to reach `cdn.tailwindcss.com` at page load. If the app must work fully offline or behind a firewall, Tailwind must be bundled.
 - [ ] Should the `GEMINI_API_KEY` build arg be required (fail the build if empty) or optional (current behavior, SPA shows ConfigureBanner)? — Affects whether the Docker image is useful without a key baked in.
 - [ ] What Postgres version policy should the project follow -- pin to exact (16.x) or track latest alpine? — Affects reproducibility vs. getting security patches automatically.
+
+## Draw.io Export Service - 2026-05-26
+
+- [ ] Should the HUMAN node use `umlActor` (stickman) or a rounded rectangle with a person label? — `umlActor` is visually distinctive but may render inconsistently across Draw.io forks. Needs manual QA confirmation.
+- [ ] Should Vitest be added as a dev dependency for unit testing this feature, or should tests be deferred until a test runner is adopted project-wide? — Affects whether the test plan in the work plan is executable immediately or is documented-only.
+- [ ] Should export warnings (orphan nodes, empty labels) be surfaced to the user via a toast/modal, or only logged to `console.warn`? — Affects UX polish. Console-only is simpler but invisible to non-developer users.
+- [ ] Should the exported `.drawio` filename include the project name (e.g., `My_Project_Blueprint.drawio`) or stay fixed as `Agentic_System_Blueprint.drawio`? — Dynamic naming is more useful for users exporting multiple projects but adds filename-sanitization complexity.
